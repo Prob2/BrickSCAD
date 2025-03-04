@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import math
+import itertools
 
 import cadquery as cq
 
@@ -33,10 +34,12 @@ class RowParameters:
                 return [self.brick_length for _ in range(self.num_bricks-1)] + [h]
             else:
                 return [h] + [self.brick_length for _ in range(self.num_bricks-1)]
-            
     
     def brick_locations(self) -> list[cq.Location]:
-        return []
+        w = self.brick_widths()
+        xs = [0] + list(itertools.accumulate(w))[:-1]
+        xm = [x+w/2 for x, w in zip(xs, w)]
+        return [cq.Location(x, 0, 0) for x in xm]
 
 @dataclass
 class WallParameters:
