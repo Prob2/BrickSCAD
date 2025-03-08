@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 import math
 import itertools
 
@@ -16,6 +17,7 @@ class BrickData:
     p: BrickParameters
     pos: cq.Location
     rot: cq.Vector
+    cut_center: Optional[cq.Location] = None
 
 @dataclass
 class RowParameters:
@@ -100,7 +102,7 @@ class WallParameters:
         ]
     
 def tunnelProfile(radius, side_height):
-    return cq.Workplane("front").moveTo(-radius, 0).lineTo(-radius, side_height).threePointArc((0,radius + side_height), (radius, side_height)).lineTo(radius,0).close()
+    return cq.Workplane("XZ").moveTo(-radius, 0).lineTo(-radius, side_height).threePointArc((0,radius + side_height), (radius, side_height)).lineTo(radius,0).close()
 
 def straightTunnelProfile():
     return tunnelProfile(radius=14, side_height=22)
@@ -121,22 +123,24 @@ if __name__ == "__cq_main__":
     
     l_wall = WallParameters(length=10, height=24, symmetric=False)
     brick = BrickParameters(length=6, width=4, height=3, gap=0.8)
-    l_points = l_wall.brick_data(brick, cq.Location(0, 0, 0))
+    l_points = l_wall.brick_data(brick, cq.Location(-24, 0, 0))
 
     t_wall = WallParameters(length=48, height=20, symmetric=True)
     brick = BrickParameters(length=6, width=4, height=3, gap=0.8)
-    t_points = t_wall.brick_data(brick, cq.Location(0, 0, l_wall.height), reverse_rows=True)
+    t_points = t_wall.brick_data(brick, cq.Location(-24, 0, l_wall.height), reverse_rows=True)
     
-    r_points = l_wall.brick_data(brick, cq.Location(38, 0, 0), reverse_rows=True)
+    r_points = l_wall.brick_data(brick, cq.Location(14, 0, 0), reverse_rows=True)
+    
+    front_wall = (          
+        straightTunnelProfile()
+        .rect(49, 44)
+        .extrude(-10)
+    )
 
-    result = (
+    front_bricks = (
         cq
             .Workplane("XZ")
             .newObject(l_points + t_points + r_points)
             .each(make_brick)
-            .workplane(0.3)
-            .moveTo(24, 22)
-            .rect(49, 45)
-            .extrude(1)
     )
-    show_object(result)
+    show_object(front_wall.intersect(front_bricks))
