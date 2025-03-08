@@ -2,8 +2,9 @@ from dataclasses import dataclass
 from typing import Optional
 import math
 import itertools
-
 import cadquery as cq
+
+import brick
 
 @dataclass
 class BrickParameters:
@@ -17,7 +18,7 @@ class BrickData:
     p: BrickParameters
     pos: cq.Location
     rot: cq.Vector
-    cut_center: Optional[cq.Location] = None
+    cut: Optional[tuple[cq.Location, int]] = None
 
 @dataclass
 class RowParameters:
@@ -54,7 +55,7 @@ class RowParameters:
                 height=self.height,
                 gap=self.brick.gap,
             ),
-            pos=loc * cq.Location(x, y, z),
+            pos=loc * cq.Location(cq.Vector(x, y, z)),
             rot=cq.Vector(0, 0, 0),
         )
         for x, w in xm]
@@ -67,10 +68,15 @@ class WallParameters:
     length: float
     height: float
     symmetric: bool = False
+    cut: Optional[tuple[cq.Location, int]] = None
+
+    def add_cut(self, d):
+        d.cut = self.cut
+        return d
     
     def brick_data(self, base: BrickParameters, loc: cq.Location, reverse_rows=False) -> list[BrickData]:
         rows = self.rows(base, reverse_rows)
-        return flatten([r.brick_data(0, i * base.height, loc) for i, r in enumerate(rows)])
+        return flatten([[self.add_cut(d) for d in r.brick_data(0, i * base.height, loc)] for i, r in enumerate(rows)])
     
     def rows(self, base: BrickParameters, reverse_rows=False) -> list[RowParameters]:
         num_rows = round(self.height / base.height)
@@ -110,26 +116,19 @@ def straightTunnelProfile():
 def curvedTunnelProfile():
     return tunnelProfile(radius=18, side_height=20)
 
-def make_brick(d: BrickData):
-    b = cq.Solid.makeBox(d.p.length - d.p.gap, d.p.width - d.p.gap, d.p.height - d.p.gap)
-    b = b.chamfer(0.3, None, b.edges())
-    # rpos = cq.Location(r(0, s=0.2), r(0, s=0.2),r(0, s=0.2),)
-    
-    return b.moved(d.pos)
-
-if __name__ == "__cq_main__":
+if True:
     # result = cq.Workplane("XY" ).box(3, 3, 0.5).edges("|Z").fillet(0.125)
     # result = curvedTunnelProfile().extrude(100).faces("|Z or -Y").shell(1)
     
     l_wall = WallParameters(length=10, height=24, symmetric=False)
     brick = BrickParameters(length=6, width=4, height=3, gap=0.8)
-    l_points = l_wall.brick_data(brick, cq.Location(-24, 0, 0))
+    l_points = l_wall.brick_data(brick, cq.Location(cq.Vector(-24, 0, 0)))
 
     t_wall = WallParameters(length=48, height=20, symmetric=True)
     brick = BrickParameters(length=6, width=4, height=3, gap=0.8)
-    t_points = t_wall.brick_data(brick, cq.Location(-24, 0, l_wall.height), reverse_rows=True)
+    t_points = t_wall.brick_data(brick, cq.Location(cq.Vector(-24, 0, l_wall.height)), reverse_rows=True)
     
-    r_points = l_wall.brick_data(brick, cq.Location(14, 0, 0), reverse_rows=True)
+    r_points = l_wall.brick_data(brick, cq.Location(cq.Vector(14, 0, 0)), reverse_rows=True)
     
     front_wall = (          
         straightTunnelProfile()
@@ -140,7 +139,6 @@ if __name__ == "__cq_main__":
     front_bricks = (
         cq
             .Workplane("XZ")
-            .newObject(l_points + t_points + r_points)
-            .each(make_brick)
+            .bricks(l_points + t_points + r_points)
     )
-    show_object(front_wall.intersect(front_bricks))
+    show_object(front_bricks)
