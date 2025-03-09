@@ -24,16 +24,18 @@ module brick(length = brick_length, width = brick_width, height = brick_height, 
     
   cut_factor = tan(cut_angle);
   cut_x = cut_length(height-gap, cut_angle);
+    
+  if (abs(cut_x) > length - gap - rf) {
+      color("red") {
+          cube(length, width, height);
+      }
+  } else {
 
   size = [length - gap + r[0] - abs(cut_x), width - gap + r[1], height - gap + r[2] - stretch * length];
-    
-  cut_num_elements = ceil(1 * (size[0] + abs(cut_x) / size[0]));
-  element_cut_factor = cut_factor / cut_num_elements;
-  // echo(cut_num_elements, element_angle, cut_x);
 
   rotate(rrot) {
-    union() {
-      left(cut_x/2) {
+    hull() {
+      left(cut_x/2)
         brick_base(size, chamfer);
 
       if (radius != 0) {
@@ -46,15 +48,13 @@ module brick(length = brick_length, width = brick_width, height = brick_height, 
       }
       
       if (cut_angle != 0) {
-      for (factor = [0:element_cut_factor:cut_factor]) {
-          right((height-gap) * factor / 2)
-          skew(sxz = factor)
+          right(0)
+          skew(sxz = cut_factor)
             brick_base(size, chamfer);          
       }
-  }
-  }
     }
   }
+}
 }
 
 module brick_arch(inner_radius, alternating = true) {
