@@ -64,25 +64,27 @@ function wall_points_symm(length, height) =
               row_points_symm(row_brick_count, i_brick_length, r * i_brick_height, i_brick_height, r % 2 == 1), 
           ]);
 
-function point_distance(p1, p2) = sqrt(pow(p1[0] - p2[0], 2) + pow(p1[1] - p2[1], 2) + pow(p1[2] - p2[2], 2));
+function sqr(x) = x * x;
+
+function point_distance(p1, p2) = sqrt(sqr(p1[0] - p2[0]) + sqr(p1[1] - p2[1]) + sqr(p1[2] - p2[2]));
             
-function point_angle(p1, p2) = atan2(p2[2]-p1[2], p2[0]-p1[0]) + 90;
+function point_angle(p1, p2) = 180 - atan2(p2[2]-p1[2], p2[0]-p1[0]);
 
 function brick_cut_angle(pos, hole) = 
   let (d = point_distance(pos, hole[0]))
-    d > hole[1] + brick_length ? [true, 0, 0] :
-      d > hole[1] - brick_length ? [point_angle(pos, hole[0]), hole[1] - d] :
-        [false, 0, 0];
+    (d > hole[1]) ? [true, 0, 0] :
+      ((d > hole[1] - brick_length) ? [true, point_angle(pos, hole[0]), hole[1] - d] :
+        [false, 0, 0]);
 
 module brick_wall(length, height, symm = false, holes=[]) {
   points = (symm) ? wall_points_symm(length, height) : wall_points(length, height);
   for(p = points) {
     pos = [p[0], p[1], p[2]];
     translate(pos) {
-      angle_cut = len(holes) > 0 ? brick_cut_angle(pos, holes[0]) : [true, 0, 0];
-      if (angle_cut[0])
+      angle_cut = (len(holes) > 0) ? brick_cut_angle(pos, holes[0]) : [true, 0, 0];
+      if (angle_cut[0]) {
         brick(length = p[3], width = p[4], height = p[5], cut_angle=angle_cut[1]);
-    }
+    }}
   }
 }
 

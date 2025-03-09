@@ -25,9 +25,9 @@ module brick(length = brick_length, width = brick_width, height = brick_height, 
   cut_factor = tan(cut_angle);
   cut_x = cut_length(height-gap, cut_angle);
     
-  if (abs(cut_x) > length - gap - rf) {
+  if (abs(cut_x) > length - gap - rf - 2*chamfer) {
       color("red") {
-          cube(length, width, height);
+          cube(1, 1, 1);
       }
   } else {
 
