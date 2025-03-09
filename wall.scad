@@ -18,14 +18,14 @@ function row_points(c, l, e, h, is_odd) =
   let (lw = (l - brick_width) / 2)
     is_odd ? [
       [brick_width / 2, lw, e + h / 2, brick_width, l, h], 
-      if (c >= 2)
-        for (i = [1:c - 1])
+      if (c > 0)
+        for (i = [1:c])
           [brick_width - l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
     ] : [
-      if (c >= 2)
-        for (i = [1:c - 1])
+      if (c > 0)
+        for (i = [1:c])
           [-l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
-      [(c - 1) * l + brick_width / 2, lw, e + h / 2, brick_width, l, h], 
+      [(c) * l + brick_width / 2, lw, e + h / 2, brick_width, l, h], 
     ];
 
 function row_points_symm(c, l, e, h, is_odd) =
@@ -81,7 +81,20 @@ module brick_wall(length, height, symm = false) {
   }
 }
 
-xdistribute(30) {
-  brick_wall(21, 40);
-  brick_wall(21, 40, symm = true);
+module tunnel_entrance(radius, side_width, side_height) {
+    width = 2*radius + 2*side_width;
+    
+    left(radius) {
+        mirror([1, 0, 0])
+            brick_wall(side_width, side_height);
+    }
+    right(radius) {
+        brick_wall(side_width, side_height);
+    }
+    
+    up(side_height) {
+        brick_arch(radius);
+    }
 }
+
+tunnel_entrance(18, 14, 24);

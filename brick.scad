@@ -13,42 +13,47 @@ module brick_base(size, chamfer = brick_chamfer) {
   cuboid(size, chamfer = chamfer);
 }
 
-module brick(length = brick_length, width = brick_width, height = brick_height, rf = brick_randomness, radius = 0, gap = brick_gap, chamfer = brick_chamfer) {
+module brick(length = brick_length, width = brick_width, height = brick_height, rf = brick_randomness, radius = 0, gap = brick_gap, chamfer = brick_chamfer, cut_angle=0) {
 
   r = rands(-rf, rf, 7);
   rrot = rands(-10 * rf, 10 * rf, 3);
 
   stretch = (radius != 0) ? (height / radius / 2) : 0;
+    
+  cut_x = (height-gap) * tan(cut_angle);
 
-  size = [length - gap + r[0], width - gap + r[1], height - gap + r[2] - stretch * length];
+  size = [length - gap + r[0] - cut_x/2, width - gap + r[1], height - gap + r[2] - stretch * length];
 
   rotate(rrot) {
     union() {
-      if (2 * stretch * length > height)
+      left(cut_x/4)
         brick_base(size, chamfer);
 
       if (radius != 0) {
-        union() {
           up(stretch / 2 * length)
             skew(szx = stretch)
               brick_base(size, chamfer);
           down(stretch / 2 * length)
             skew(szx = -stretch)
               brick_base(size, chamfer);
-        }
+      }
+      
+      if (cut_angle != 0) {
+        right(cut_x/4)
+          skew(axz = cut_angle)
+            brick_base(size, chamfer);
       }
     }
   }
 }
 
-brick();
-
-module brick_arch(radius, alternating = true) {
+module brick_arch(inner_radius, alternating = true) {
+  radius = inner_radius + brick_length/2;
   arch_length = radius * PI;
   // The number of bricks has to always be 4k+1, so that
   // both edge bricks and the center (top) one are always
   // horizontal.
-  brick_count_p = 4 * round(arch_length / brick_height / 4) + 1;
+  brick_count_p = 4 * floor(arch_length / brick_height / 4) + 1;
   brick_height = arch_length / brick_count_p;
   brick_count = brick_count_p - 1;
   angle = 180 / brick_count_p;
@@ -73,6 +78,14 @@ module brick_arch(radius, alternating = true) {
   }
 }
 
+/*
 brick_arch(20);
 
 brick_arch(40);
+
+up(4)
+    brick(cut_angle=30);
+
+up(8)
+    brick(cut_angle=60);
+*/
