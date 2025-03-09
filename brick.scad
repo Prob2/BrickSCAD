@@ -13,6 +13,8 @@ module brick_base(size, chamfer = brick_chamfer) {
   cuboid(size, chamfer = chamfer);
 }
 
+function cut_length(height, angle) = height * tan(angle);
+
 module brick(length = brick_length, width = brick_width, height = brick_height, rf = brick_randomness, radius = 0, gap = brick_gap, chamfer = brick_chamfer, cut_angle=0) {
 
   r = rands(-rf, rf, 7);
@@ -20,13 +22,18 @@ module brick(length = brick_length, width = brick_width, height = brick_height, 
 
   stretch = (radius != 0) ? (height / radius / 2) : 0;
     
-  cut_x = (height-gap) * tan(cut_angle);
+  cut_factor = tan(cut_angle);
+  cut_x = cut_length(height-gap, cut_angle);
 
-  size = [length - gap + r[0] - cut_x/2, width - gap + r[1], height - gap + r[2] - stretch * length];
+  size = [length - gap + r[0] - abs(cut_x), width - gap + r[1], height - gap + r[2] - stretch * length];
+    
+  cut_num_elements = ceil(1 * (size[0] + abs(cut_x) / size[0]));
+  element_cut_factor = cut_factor / cut_num_elements;
+  // echo(cut_num_elements, element_angle, cut_x);
 
   rotate(rrot) {
     union() {
-      left(cut_x/4)
+      left(cut_x/2) {
         brick_base(size, chamfer);
 
       if (radius != 0) {
@@ -39,10 +46,13 @@ module brick(length = brick_length, width = brick_width, height = brick_height, 
       }
       
       if (cut_angle != 0) {
-        right(cut_x/4)
-          skew(axz = cut_angle)
-            brick_base(size, chamfer);
+      for (factor = [0:element_cut_factor:cut_factor]) {
+          right((height-gap) * factor / 2)
+          skew(sxz = factor)
+            brick_base(size, chamfer);          
       }
+  }
+  }
     }
   }
 }
@@ -88,4 +98,13 @@ up(4)
 
 up(8)
     brick(cut_angle=60);
+*/
+
+/*
+zdistribute(3) {
+    brick(cut_angle=-60);
+    brick(cut_angle=60);
+    brick(cut_angle=0);
+    brick(cut_angle=60);
+}
 */
