@@ -5,24 +5,25 @@ brick_width = 5;
 brick_height = 3;
 
 brick_randomness = 0.2;
-gap = 0.8;
+brick_gap = 0.8;
 
 module brick_base(size) {
     cuboid(size, chamfer=0.2);
 }
 
-module brick(length=brick_length, width=brick_width, height=brick_height, rf=0.2, radius=0) {
+module brick(length=brick_length, width=brick_width, height=brick_height, rf=brick_randomness, radius=0, gap=brick_gap) {
     
     r = rands(-rf, rf, 7);
     rrot = rands(-10*rf, 10*rf, 3);
     
-    stretch = (radius != 0) ? (1/radius) : 0;
+    stretch = (radius != 0) ? (height/radius/2) : 0;
     
     size = [length-gap+r[0], width-gap+r[1], height-gap+r[2]-stretch*length];
     
     rotate(rrot) {
         union() {
-            brick_base(size);
+            if (2 * stretch * length > height)
+                brick_base(size);
 
         if (radius != 0) {
             union() {
@@ -40,17 +41,35 @@ module brick(length=brick_length, width=brick_width, height=brick_height, rf=0.2
 
 brick();
 
-radius = 20;
+module brick_arch(radius, alternating=true) {
+    arch_length = radius * PI;
+    // The number of bricks has to always be 4k+1, so that
+    // both edge bricks and the center (top) one are always
+    // horizontal.
+    brick_count_p = 4 * round(arch_length / brick_height / 4)+1;
+    brick_height = arch_length / brick_count_p;
+    brick_count = brick_count_p - 1;
+    angle = 180 / brick_count_p;
+    
+    hl = brick_length/2;
+    ql = brick_length/4;
 
-for (i=[0:20]) {
-    yrot(-(i+0.5)*90/10.5) right(radius) {
-        if (i%2 == 0) {
-            brick(radius=radius, length=(i%2==0) ? 6 : 3);
-        } else {
-            left(1.5)
-                brick(radius=radius, length=3, height=brick_height * (radius-1.5) / radius);
-            right(1.5)
-                brick(radius=10, length=3, height=brick_height * (radius+1.5) / radius);
+    for (i=[0:brick_count]) {
+        yrot(-(i+0.5)*angle) right(radius) {
+            if (!alternating || i%2 == 0) {
+                brick(radius=radius, length=brick_length, height=brick_height);
+            } else {
+                back(brick_length/2-brick_width/2) {
+                left(ql)
+                    brick(radius=radius-ql, length=hl, height=brick_height * (radius-ql) / radius, width=brick_length);
+                right(ql)
+                    brick(radius=radius+ql, length=hl, height=brick_height * (radius+ql) / radius, width=brick_length);
+                }
+            }
         }
     }
 }
+
+brick_arch(20);
+
+brick_arch(40);
