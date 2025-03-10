@@ -14,9 +14,9 @@ function row_brick_length(row_length) =
       [brick_count, brick_length];
 
 function row_points(c, l, e, h, is_odd) =
-  let (lw = (l - brick_width) / 2)
+  let (lw = (brick_length - brick_width) / 2)
     is_odd ? [
-      [brick_width / 2, lw, e + h / 2, brick_width, l, h], 
+      [brick_width / 2, lw, e + h / 2, brick_width, brick_length, h], 
       if (c > 0)
         for (i = [1:c])
           [brick_width - l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
@@ -24,7 +24,7 @@ function row_points(c, l, e, h, is_odd) =
       if (c > 0)
         for (i = [1:c])
           [-l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
-      [(c) * l + brick_width / 2, lw, e + h / 2, brick_width, l, h], 
+      [(c) * l + brick_width / 2, lw, e + h / 2, brick_width, brick_length, h], 
     ];
 
 function row_points_open(c, l, e, h, is_odd) =
@@ -104,3 +104,14 @@ module brick_wall(length, height, symm = false, holes=[], invert_odd=false, open
     }}
   }
 }
+
+module brick_wall_corner(l1, l2, height) {
+    brick_wall(l1, height);
+    translate([l1-brick_width/2, brick_length-brick_width/2, 0]) {
+        zrot(90) {
+            brick_wall(l2, height, open=true);
+        }
+    }
+}
+
+brick_wall_corner(14, 50, 24);
