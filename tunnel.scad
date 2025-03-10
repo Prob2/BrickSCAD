@@ -33,8 +33,15 @@ module tunnel_entrance(radius, side_width, side_height) {
         }
     }
     
-    zrot(90) {
-        brick_wall(40, side_height, open=true, invert_odd=true);
+    translate([-radius-brick_width/2, brick_length-brick_width/2, 0]) {
+        zrot(90) {
+            brick_wall(40, side_height, open=true, invert_odd=true);
+        }
+    }
+    translate([radius+brick_width/2, brick_length-brick_width/2, 0]) {
+        zrot(90) {
+            brick_wall(40, side_height, open=true, invert_odd=true);
+        }
     }
 }
 
