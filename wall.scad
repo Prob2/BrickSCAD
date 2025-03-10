@@ -1,6 +1,5 @@
 // include <BOSL2/std.scad>;
-include <brick.scad>
-;
+include <brick.scad>;
 
 function flatten(l) =
   [
@@ -26,6 +25,12 @@ function row_points(c, l, e, h, is_odd) =
         for (i = [1:c])
           [-l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
       [(c) * l + brick_width / 2, lw, e + h / 2, brick_width, l, h], 
+    ];
+
+function row_points_open(c, l, e, h, is_odd) =
+  let (s = is_odd ? brick_width - brick_length : 0)
+    [for (i = [0:c-1])
+      [s + l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
     ];
 
 function row_points_symm(c, l, e, h, is_odd) =
@@ -54,6 +59,18 @@ function wall_points(length, height, invert_odd) =
                   row_points(row_brick_count, i_brick_length, r * i_brick_height, i_brick_height, (r % 2 == 0) == invert_odd), 
               ]);
 
+function wall_points_open(length, height, invert_odd) =
+  let (whole_brick_length = length)
+    let (whole_brick_count = round(whole_brick_length / brick_length))
+      let (i_brick_length = whole_brick_length / whole_brick_count)
+        let (row_brick_count = whole_brick_count)
+          let (row_count = round(height / brick_height))
+            let (i_brick_height = height / row_count)
+              flatten([
+                for (r = [0:row_count - 1])
+                  row_points_open(row_brick_count, i_brick_length, r * i_brick_height, i_brick_height, (r % 2 == 0) == invert_odd), 
+              ]);
+
 function wall_points_symm(length, height, invert_odd) =
   let (row_brick_count = round(length / brick_length))
     let (i_brick_length = length / row_brick_count)
@@ -76,8 +93,8 @@ function brick_cut_angle(pos, hole) =
       ((d > hole[1] - brick_length) ? [true, point_angle(pos, hole[0]), hole[1] - d] :
         [false, 0, 0]);
 
-module brick_wall(length, height, symm = false, holes=[], invert_odd=false) {
-  points = (symm) ? wall_points_symm(length, height, invert_odd) : wall_points(length, height, invert_odd);
+module brick_wall(length, height, symm = false, holes=[], invert_odd=false, open=false) {
+  points = (symm) ? wall_points_symm(length, height, invert_odd) : open ? wall_points_open(length, height, invert_odd) : wall_points(length, height, invert_odd);
   for(p = points) {
     pos = [p[0], p[1], p[2]];
     translate(pos) {
@@ -87,41 +104,3 @@ module brick_wall(length, height, symm = false, holes=[], invert_odd=false) {
     }}
   }
 }
-
-module chamfered_cut_cylinder(r, h) {
-    cylinder(h=h+2*brick_chamfer, r=r, center=true);
-    
-    up(h/2 + 1*brick_chamfer)
-        cylinder(h=4*brick_chamfer, r1=r, r2=r+4*brick_chamfer, center=true);
-}
-
-module tunnel_entrance(radius, side_width, side_height) {
-    width = 2*radius + 2*side_width;
-    
-    left(radius) {
-        mirror([1, 0, 0])
-            brick_wall(side_width, side_height);
-    }
-    right(radius) {
-        brick_wall(side_width, side_height);
-    }
-    
-    up(side_height) {
-        brick_arch(radius);
-        
-        difference() {        
-            left(width/2) {
-                brick_wall(width, 30, symm=true, invert_odd=true);
-            }
-//         } color("blue") {
-            xrot(90) {
-                chamfered_cut_cylinder(r=radius+brick_length+brick_gap/2, h=brick_width-brick_gap);
-            }
-        }
-    }
-}
-
-tunnel_entrance(18, 13, 24);
-
-color("gray")
-chamfered_cut_cylinder(18, brick_width);
