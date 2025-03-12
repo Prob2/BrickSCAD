@@ -43,6 +43,22 @@ module tunnel_entrance(radius, side_width, side_height) {
             brick_wall(40, side_height, open=true, invert_odd=true);
         }
     }
+    
+    // Mortar
+    brick_depth = brick_gap/2;
+    fwd(brick_width/2-brick_depth-1)
+    difference() {
+        up((side_height + 30)/2) {
+            cube([width, 1, side_height+30], center=true);
+        }
+        up(side_height/2) {
+            cube([2*radius+2*brick_gap, 2, side_height], center=true);
+        }
+        up(side_height) {
+            xrot(90)
+                cylinder(h=2, r=radius+brick_gap, center=true);
+        }
+    }
 }
 
 tunnel_entrance(18, 13, 24);
