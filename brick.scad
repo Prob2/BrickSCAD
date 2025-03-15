@@ -20,7 +20,7 @@ module brick(length = brick_length, width = brick_width, height = brick_height, 
   r = rands(-rf, rf, 7);
   rrot = rands(-10 * rf, 10 * rf, 3);
 
-  stretch = (radius != 0) ? (height / radius / 2) : 0;
+  stretch = (radius != 0) ? (height / radius / PI) : 0;
     
   cut_factor = tan(cut_angle);
   cut_x = cut_length(height-gap, cut_angle);
@@ -108,3 +108,5 @@ zdistribute(3) {
     brick(cut_angle=60);
 }
 */
+
+// brick_arch(10);

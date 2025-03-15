@@ -2,7 +2,7 @@ include <BOSL2/std.scad>;
 include <brick.scad>;
 use <wall.scad>;
 
-tunnel_length = 40;
+tunnel_length = 100;
 tunnel_radius = 18;
 side_width = 13;
 side_height = 24;
@@ -42,17 +42,17 @@ module tunnel_entrance(radius, side_width, side_height, tunnel_length) {
     
     translate([-radius-brick_width/2, brick_length-brick_width/2, 0]) {
         zrot(90) {
-            brick_wall(40, side_height, open=true, invert_odd=true);
-            translate([40/2-brick_width-1, -(brick_width/2-brick_depth-1), side_height/2]) {
-                cube([40, 1, side_height], center=true);
+            brick_wall(tunnel_length, side_height, open=true, invert_odd=true);
+            translate([tunnel_length/2-brick_width-1, -(brick_width/2-brick_depth-1), side_height/2]) {
+                cube([tunnel_length, 1, side_height], center=true);
             }
         }
     }
     translate([radius+brick_width/2, brick_length-brick_width/2, 0]) {
         zrot(90) {
-            brick_wall(40, side_height, open=true, invert_odd=true);
-            translate([40/2-brick_width-1, (brick_width/2-brick_depth-1), side_height/2]) {
-                cube([40, 1, side_height], center=true);
+            brick_wall(tunnel_length, side_height, open=true, invert_odd=true);
+            translate([tunnel_length/2-brick_width-1, (brick_width/2-brick_depth-1), side_height/2]) {
+                cube([tunnel_length, 1, side_height], center=true);
             }
         }
     }
@@ -71,6 +71,15 @@ module tunnel_entrance(radius, side_width, side_height, tunnel_length) {
             xrot(90)
                 cylinder(h=2, r=radius+brick_gap, center=true);
         }
+    }
+    
+    // Tunnel Roof Bricks
+    brick_roof_radius = radius + brick_width/2;
+    back(brick_length-brick_width/2)
+    left(brick_roof_radius)
+    up(side_height) {
+        zrot(90)
+        brick_wall(tunnel_length, brick_roof_radius*PI, radius=brick_roof_radius, open=true, invert_odd=true);
     }
     
     // Tunnel Roof Mortar

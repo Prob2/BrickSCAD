@@ -93,11 +93,24 @@ function brick_cut_angle(pos, hole) =
       ((d > hole[1] - brick_length) ? [true, point_angle(pos, hole[0]), hole[1] - d] :
         [false, 0, 0]);
 
-module brick_wall(length, height, symm = false, holes=[], invert_odd=false, open=false) {
+module translate_with_radius(pos, radius=0) {
+    if (radius == 0) {
+        translate(pos) children();
+    } else {
+        angle = 180 / PI * pos[2] / radius;
+        z_scale_factor = (radius - brick_height/2) / radius;
+        
+        translate([0, -radius, 0])
+        xrot(angle)
+        translate([pos[0], pos[1]+radius, 0]) scale([1, 1, z_scale_factor]) children();
+    }
+}
+        
+module brick_wall(length, height, symm = false, holes=[], invert_odd=false, open=false, radius=0) {
   points = (symm) ? wall_points_symm(length, height, invert_odd) : open ? wall_points_open(length, height, invert_odd) : wall_points(length, height, invert_odd);
   for(p = points) {
     pos = [p[0], p[1], p[2]];
-    translate(pos) {
+    translate_with_radius(pos, radius) {
       angle_cut = (len(holes) > 0) ? brick_cut_angle(pos, holes[0]) : [true, 0, 0];
       if (angle_cut[0]) {
         brick(length = p[3], width = p[4], height = p[5], cut_angle=angle_cut[1]);
@@ -114,4 +127,6 @@ module brick_wall_corner(l1, l2, height) {
     }
 }
 
-brick_wall_corner(14, 50, 24);
+// brick_wall_corner(14, 50, 24);
+
+brick_wall(100, 20 * PI, radius=20, open=true);
