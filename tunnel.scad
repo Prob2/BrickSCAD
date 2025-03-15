@@ -2,6 +2,13 @@ include <BOSL2/std.scad>;
 include <brick.scad>;
 use <wall.scad>;
 
+tunnel_length = 40;
+tunnel_radius = 18;
+side_width = 13;
+side_height = 24;
+
+$fn=90;
+
 module chamfered_cut_cylinder(r, h) {
     cylinder(h=h+2*brick_chamfer, r=r, center=true);
     
@@ -9,7 +16,7 @@ module chamfered_cut_cylinder(r, h) {
         cylinder(h=4*brick_chamfer, r1=r, r2=r+4*brick_chamfer, center=true);
 }
 
-module tunnel_entrance(radius, side_width, side_height) {
+module tunnel_entrance(radius, side_width, side_height, tunnel_length) {
     width = 2*radius + 2*side_width;
     
     left(radius) {
@@ -36,14 +43,20 @@ module tunnel_entrance(radius, side_width, side_height) {
     translate([-radius-brick_width/2, brick_length-brick_width/2, 0]) {
         zrot(90) {
             brick_wall(40, side_height, open=true, invert_odd=true);
+            translate([40/2-brick_width-1, -(brick_width/2-brick_depth-1), side_height/2]) {
+                cube([40, 1, side_height], center=true);
+            }
         }
     }
     translate([radius+brick_width/2, brick_length-brick_width/2, 0]) {
         zrot(90) {
             brick_wall(40, side_height, open=true, invert_odd=true);
+            translate([40/2-brick_width-1, (brick_width/2-brick_depth-1), side_height/2]) {
+                cube([40, 1, side_height], center=true);
+            }
         }
     }
-    
+
     // Mortar
     brick_depth = brick_gap/2;
     fwd(brick_width/2-brick_depth-1)
@@ -59,6 +72,20 @@ module tunnel_entrance(radius, side_width, side_height) {
                 cylinder(h=2, r=radius+brick_gap, center=true);
         }
     }
+    
+    // Tunnel Roof Mortar
+    roof_radius = radius+brick_depth+brick_gap/2;
+    fwd(brick_width/2-1)
+    up(side_height)
+    xrot(-90)
+    difference() {
+        cylinder(r=roof_radius+1, h=tunnel_length);
+        down(1)
+            cylinder(r=roof_radius, h=tunnel_length+2);
+        up(tunnel_length/2+2)
+        back(roof_radius+2)
+        cube([2*roof_radius+4, 2*roof_radius+4, tunnel_length+4], center=true);
+    }
 }
 
-tunnel_entrance(18, 13, 24);
+tunnel_entrance(tunnel_radius, side_width, side_height, tunnel_length);
