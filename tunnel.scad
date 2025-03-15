@@ -73,7 +73,7 @@ module tunnel_entrance(radius, side_width, side_height, tunnel_length) {
         }
     }
     
-    // Tunnel Roof Bricks
+    // Tunnel Roof Bricks, 1, 
     brick_roof_radius = radius + brick_width/2;
     back(brick_length-brick_width/2)
     left(brick_roof_radius)
@@ -97,4 +97,30 @@ module tunnel_entrance(radius, side_width, side_height, tunnel_length) {
     }
 }
 
-tunnel_entrance(tunnel_radius, side_width, side_height, tunnel_length);
+module tunnel_entrance_envelope(radius, side_width, side_height, tunnel_length) {
+    width = 2*radius + 2*side_width;
+    height = side_height + 30;
+    brick_depth = brick_gap/2;
+    roof_radius = radius+brick_depth+brick_gap/2;
+
+    // Face
+    fwd(brick_width/2) {
+        up(height/2)
+        cube([2*tunnel_radius + 2*side_width, 3, height], center=true);
+    }
+    
+    // Tunnel
+    fwd(brick_width)
+    up(side_height)
+    xrot(-90) {
+        cylinder(r=roof_radius+1, h=tunnel_length+2*brick_length);
+    }
+    up(side_height/2)
+    back(tunnel_length/2+brick_length-brick_width)
+    cube([2*roof_radius+2, tunnel_length+2*brick_length, side_height], center=true);
+}
+
+intersection() {
+    tunnel_entrance(tunnel_radius, side_width, side_height, tunnel_length);
+    tunnel_entrance_envelope(tunnel_radius, side_width, side_height, tunnel_length);
+}
