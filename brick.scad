@@ -8,6 +8,7 @@ brick_height = 3;
 brick_randomness = 0.2;
 brick_gap = 0.8;
 brick_chamfer = 0.2;
+brick_depth = 0.4;
 
 module brick_base(size, chamfer = brick_chamfer) {
   cuboid(size, chamfer = chamfer);

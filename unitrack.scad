@@ -15,7 +15,7 @@ module mirrored() {
     mirror([1, 0, 0]) children();
 }
 
-module unitrack(length) {
+module unitrack(length, clearance=clearance) {
     mirrored()
     linear_extrude(length) {
         offset(clearance) {
