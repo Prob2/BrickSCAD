@@ -10,6 +10,8 @@ side_height = 24;
 
 $fn=90;
 
+clearance = 0.15;
+
 module chamfered_cut_cylinder(r, h) {
     cylinder(h=h+2*brick_chamfer, r=r, center=true);
     
@@ -21,16 +23,16 @@ module inner_side_wall(floor_elevation, tunnel_length, side_height, side=1) {
     mortar_offset = -side*(brick_width/2-brick_depth-1);
     up(floor_elevation) {
         brick_wall(tunnel_length, side_height-floor_elevation, open=true, invert_odd=true);
-        translate([tunnel_length/2-brick_width-1, mortar_offset, (side_height-floor_elevation)/2]) {
-            cube([tunnel_length, 1, side_height-floor_elevation], center=true);
+        translate([tunnel_length/2-brick_width-1, mortar_offset, (side_height-floor_elevation)/2+clearance]) {
+            cube([tunnel_length, 1, side_height-floor_elevation-clearance], center=true);
         }
     }
     
     left(brick_width+1)
     back(mortar_offset) {
-        cube([brick_width, 1, brick_height]);
-        up(floor_elevation/2) {
-            cube([brick_length, 1, brick_height]);
+        cube([brick_width-clearance, 1, brick_height+2*clearance]);
+        up(floor_elevation/2 + clearance) {
+            cube([brick_length-clearance, 1, brick_height]);
         }
     }
 }
