@@ -152,7 +152,7 @@ module tunnel_floor(tunnel_radius, tunnel_length) {
         fwd(1)
         zrot(180)
         xrot(90)
-        unitrack(tunnel_length+2, clearance=0);
+        unitrack(tunnel_length+2, clearance=0.25);
     }
 }
 
