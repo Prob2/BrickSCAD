@@ -3,7 +3,7 @@ include <brick.scad>;
 use <wall.scad>;
 use <unitrack.scad>;
 
-tunnel_length = 128;
+tunnel_length = 32;
 tunnel_radius = 18;
 side_width = 13;
 side_height = 24;
@@ -37,7 +37,7 @@ module inner_side_wall(floor_elevation, tunnel_length, side_height, side=1) {
     }
 }
 
-module tunnel_entrance(radius, side_width, side_height, tunnel_length) {
+module tunnel_entrance_full(radius, side_width, side_height, tunnel_length) {
     width = 2*radius + 2*side_width;
     
     floor_elevation = 2 * brick_height;
@@ -136,11 +136,26 @@ module tunnel_entrance_envelope(radius, side_width, side_height, tunnel_length) 
     cube([2*roof_radius+2, tunnel_length+2*brick_length, side_height], center=true);
 }
 
-intersection() {
-    tunnel_entrance(tunnel_radius, side_width, side_height, tunnel_length);
-    tunnel_entrance_envelope(tunnel_radius, side_width, side_height, tunnel_length);
+module tunnel_entrance(tunnel_radius, side_width, side_height, tunnel_length) {
+    intersection() {
+        tunnel_entrance_full(tunnel_radius, side_width, side_height, tunnel_length);
+        tunnel_entrance_envelope(tunnel_radius, side_width, side_height, tunnel_length);
+    }
 }
 
-zrot(180)
-xrot(90)
-unitrack(tunnel_length, clearance=0);
+module tunnel_floor(tunnel_radius, tunnel_length) {
+    difference() {
+        back(tunnel_length/2)
+        up(2)
+        cube([2*tunnel_radius, tunnel_length, 4], center=true);
+        up(1)
+        fwd(1)
+        zrot(180)
+        xrot(90)
+        unitrack(tunnel_length+2, clearance=0);
+    }
+}
+
+tunnel_entrance(tunnel_radius, side_width, side_height, tunnel_length);
+
+tunnel_floor(tunnel_radius, tunnel_length);
