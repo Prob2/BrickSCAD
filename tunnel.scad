@@ -20,19 +20,32 @@ module chamfered_cut_cylinder(r, h) {
 }
 
 module inner_side_wall(floor_elevation, tunnel_length, side_height, side=1) {
+    wall_length = tunnel_length+brick_length-brick_width/2-brick_gap;
     mortar_offset = -side*(brick_width/2-brick_depth-1);
     up(floor_elevation) {
         brick_wall(tunnel_length, side_height-floor_elevation, open=true, invert_odd=true);
-        translate([tunnel_length/2-brick_width-1, mortar_offset, (side_height-floor_elevation)/2+clearance]) {
-            cube([tunnel_length, 1, side_height-floor_elevation-clearance], center=true);
+        translate([wall_length/2-brick_width-1, mortar_offset, (side_height-floor_elevation)/2+clearance]) {
+            cube([wall_length, 1, side_height-floor_elevation-clearance], center=true);
         }
     }
     
     left(brick_width+1)
-    back(mortar_offset) {
+    back(mortar_offset-1/2) {
         cube([brick_width-clearance, 1, brick_height+2*clearance]);
         up(floor_elevation/2 + clearance) {
             cube([brick_length-clearance, 1, brick_height]);
+        }
+    }
+}
+
+module segment_side_wall(floor_elevation, tunnel_length, side_height, side=1) {
+    wall_offset = brick_length-brick_width/2;
+    wall_length = tunnel_length+brick_length-brick_width/2-brick_gap;
+    mortar_offset = -side*(brick_width/2-brick_depth-1);
+    up(floor_elevation) {
+        brick_wall(tunnel_length, side_height-floor_elevation, open=true, invert_odd=true);
+        translate([tunnel_length/2-wall_offset/4, mortar_offset, (side_height-floor_elevation)/2+clearance]) {
+            cube([tunnel_length-wall_offset/2, 1, side_height-floor_elevation-clearance], center=true);
         }
     }
 }
@@ -104,9 +117,9 @@ module tunnel_entrance_full(radius, side_width, side_height, tunnel_length) {
     up(side_height)
     xrot(-90)
     difference() {
-        cylinder(r=roof_radius+1, h=tunnel_length);
+        cylinder(r=roof_radius+1, h=tunnel_length+brick_length-brick_width/2-brick_gap);
         down(1)
-            cylinder(r=roof_radius, h=tunnel_length+2);
+            cylinder(r=roof_radius, h=tunnel_length+brick_length);
         up(tunnel_length/2+2)
         back(roof_radius+2)
         cube([2*roof_radius+4, 2*roof_radius+4, tunnel_length+4], center=true);
@@ -136,6 +149,21 @@ module tunnel_entrance_envelope(radius, side_width, side_height, tunnel_length) 
     cube([2*roof_radius+2, tunnel_length+2*brick_length, side_height], center=true);
 }
 
+module tunnel_segment_envelope(radius, side_height, tunnel_length) {
+    brick_depth = brick_gap/2;
+    roof_radius = radius+brick_depth+brick_gap/2;
+    
+    // Tunnel
+    back(brick_width/2)
+    up(side_height)
+    xrot(-90) {
+        cylinder(r=roof_radius+1, h=tunnel_length+2*brick_length);
+    }
+    up(side_height/2+brick_height)
+    back(tunnel_length/2+brick_length+brick_width/2)
+    cube([2*roof_radius+2, tunnel_length+2*brick_length, side_height-2*brick_height], center=true);
+}
+
 module tunnel_entrance(tunnel_radius, side_width, side_height, tunnel_length) {
     intersection() {
         tunnel_entrance_full(tunnel_radius, side_width, side_height, tunnel_length);
@@ -143,11 +171,21 @@ module tunnel_entrance(tunnel_radius, side_width, side_height, tunnel_length) {
     }
 }
 
-module tunnel_floor(tunnel_radius, tunnel_length) {
+module tunnel_floor(tunnel_radius, tunnel_length, height=4) {
+    floor_elevation = 2 * brick_height;
+
+    holder_height = 4;
+    total_height = floor_elevation + holder_height;
     difference() {
         back(tunnel_length/2)
-        up(2)
-        cube([2*tunnel_radius, tunnel_length, 4], center=true);
+        up(total_height/2)
+        cube([2*tunnel_radius+6, tunnel_length, total_height], center=true);
+        back(tunnel_length/2)
+        up(total_height/2 + floor_elevation/2 + 1)
+        cube([2*tunnel_radius+4, tunnel_length+1, holder_height+2], center=true);
+        back(tunnel_length/2)
+        up(height+holder_height/2+1)
+        cube([2*tunnel_radius, tunnel_length+1, holder_height+2], center=true);
         up(1)
         fwd(1)
         zrot(180)
@@ -156,6 +194,63 @@ module tunnel_floor(tunnel_radius, tunnel_length) {
     }
 }
 
+module tunnel_segment_full(radius, side_height, tunnel_length) {
+    floor_elevation = 2 * brick_height;
+    
+    translate([-radius-brick_width/2, brick_length-brick_width/2, 0]) {
+        zrot(90) {
+            segment_side_wall(floor_elevation, tunnel_length, side_height, 1);
+        }
+    }
+    translate([radius+brick_width/2, brick_length-brick_width/2, 0]) {
+        zrot(90) {
+            segment_side_wall(floor_elevation, tunnel_length, side_height, -1);
+        }
+    }
+    
+    // Tunnel Roof Bricks, 1, 
+    brick_roof_radius = radius + brick_width/2;
+    back(brick_length-brick_width/2)
+    left(brick_roof_radius)
+    up(side_height) {
+        zrot(90)
+        brick_wall(tunnel_length, brick_roof_radius*PI, radius=brick_roof_radius, open=true, invert_odd=true);
+    }
+    
+    // Tunnel Roof Mortar
+    roof_radius = radius+brick_depth+brick_gap/2;
+    wall_offset = brick_length-brick_width/2;
+    up(side_height)
+    back(wall_offset)
+    xrot(-90)
+    difference() {
+        cylinder(r=roof_radius+1, h=tunnel_length-wall_offset/2);
+        down(1)
+            cylinder(r=roof_radius, h=tunnel_length+1);
+        up(tunnel_length/2+2)
+        back(roof_radius+2)
+        cube([2*roof_radius+4, 2*roof_radius+4, tunnel_length+4], center=true);
+    }
+}
+
+module tunnel_segment(tunnel_radius, side_height, tunnel_length) {
+    intersection() {
+        tunnel_segment_full(tunnel_radius, side_height, tunnel_length);
+        tunnel_segment_envelope(tunnel_radius, side_height, tunnel_length);
+    }
+}
+
+
 tunnel_entrance(tunnel_radius, side_width, side_height, tunnel_length);
 
-tunnel_floor(tunnel_radius, tunnel_length);
+back(tunnel_length + 40) {
+    tunnel_segment(tunnel_radius, side_height, tunnel_length);
+}
+
+back(brick_length)
+down(20)
+xdistribute(60) {
+    tunnel_floor(tunnel_radius, tunnel_length, 4);
+    tunnel_floor(tunnel_radius, tunnel_length, 5);
+    tunnel_floor(tunnel_radius, tunnel_length, 6);
+}
