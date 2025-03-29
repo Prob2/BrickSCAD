@@ -14,17 +14,27 @@ wheels_height = 4;
 
 wheel_base = 80;
 
-module wagon() {
+module wagon(extra_width=0) {
     up(wheels_height) {
         // Wagon body
-        cuboid([wagon_width, wagon_length, wagon_height], chamfer=wagon_top_chamfer, edges=[TOP+RIGHT,TOP+LEFT], anchor=BOTTOM);
+        cuboid([wagon_width+extra_width, wagon_length, wagon_height], chamfer=wagon_top_chamfer, edges=[TOP+RIGHT,TOP+LEFT], anchor=BOTTOM);
         
         // Wheels
         ydistribute(wheel_base) {
-            cuboid([wheels_width, wheels_length, wheels_height], anchor=TOP);
-            cuboid([wheels_width, wheels_length, wheels_height], anchor=TOP);
+            cuboid([wheels_width+extra_width, wheels_length, wheels_height], anchor=TOP);
+            cuboid([wheels_width+extra_width, wheels_length, wheels_height], anchor=TOP);
         }
     }
 }
 
-wagon();
+function extra_width_space(radius) = radius - sqrt(radius*radius - wheel_base*wheel_base/4);
+
+module wagon_with_extra_space(radius=0) {
+    extra_width = radius == 0 ? 0 : extra_width_space(radius);
+    wagon(extra_width);
+} 
+
+ydistribute(120) {
+    wagon_with_extra_space();
+    wagon_with_extra_space(150);
+}
