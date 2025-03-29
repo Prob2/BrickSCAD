@@ -27,6 +27,7 @@ module wagon(extra_width=0) {
     }
 }
 
+// This is called "sagitta" - https://en.wikipedia.org/wiki/Sagitta_(geometry)
 function extra_width_space(radius) = radius - sqrt(radius*radius - wheel_base*wheel_base/4);
 
 module wagon_with_extra_space(radius=0) {
