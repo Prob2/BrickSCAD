@@ -3,16 +3,16 @@ include <brick.scad>;
 use <wall.scad>;
 use <unitrack.scad>;
 
-wagon_length = 100;
-wagon_height = 18;
-wagon_width = 13;
+wagon_length = 118;
+wagon_height = 23;
+wagon_width = 18;
 wagon_top_chamfer = 3;
 
-wheels_width = 10;
+wheels_width = 12;
 wheels_length = 15;
-wheels_height = 4;
+wheels_height = 3;
 
-wheel_base = 80;
+wheel_base = 87;
 
 module wagon(extra_width=0) {
     up(wheels_height) {
@@ -35,7 +35,7 @@ module wagon_with_extra_space(radius=0) {
     wagon(extra_width);
 } 
 
-ydistribute(120) {
+ydistribute(wagon_length + 20) {
     wagon_with_extra_space();
     wagon_with_extra_space(150);
 }
