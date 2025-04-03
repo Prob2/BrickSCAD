@@ -3,7 +3,7 @@ include <BOSL2/std.scad>
 /* [Brick parameters] */
 brick_length = 6;
 brick_width = 4;
-brick_height = 2.5;
+brick_height = 2.6; // [2:0.05:4]
 
 brick_randomness = 0.2;
 brick_gap = 0.8;
@@ -12,9 +12,9 @@ brick_depth = 0.4;
 
 /* [Tunnel roof] */
 // Tunnel radius [mm]
-tunnel_radius = 18;
+tunnel_radius = 17;
 // Tunnel side height [mm]
-side_height = 22;
+side_height = 24;
 
 /* [Tunnel floor] */
 floor_side_wall_height = 6;
@@ -60,6 +60,10 @@ side_wall_height = side_height - floor_side_wall_height;
 brick_row_offset = brick_length - brick_width;
 brick_tunnel_radius = tunnel_radius + brick_width/2 - brick_gap/2 - brick_depth;
 
+envelope_extra_angle = 5 * turn_sign;
+envelope_extra_length = curve_radius * envelope_extra_angle * PI / 180.0;
+envelope_extra_height = envelope_extra_length * grade * turn_sign;
+
 function tunnel_profile(step = 5) = 
     let (tr = tunnel_radius + thickness)
     [
@@ -79,9 +83,19 @@ function tunnel_envelope_profile(r, h, t, step = 5) =
     let (tr = tunnel_radius + thickness)
     [
         [tr, 0],
-        [tr, side_height],
-        for (a = [180:-step:0]) [-tr * cos(a), side_height + tr * sin(a)],
-        [-tr, side_height],
+        [tr, side_wall_height],
+        for (a = [180:-step:0]) [-tr * cos(a), side_wall_height + tr * sin(a)],
+        [-tr, side_wall_height],
+        [-tr, 0],
+    ];
+    
+function tunnel_inner_envelope_profile(r, h, t, step = 5) = 
+    let (tr = tunnel_radius - clearance)
+    [
+        [tr, 0],
+        [tr, side_wall_height],
+        for (a = [180:-step:0]) [-tr * cos(a), side_wall_height + tr * sin(a)],
+        [-tr, side_wall_height],
         [-tr, 0],
     ];
 
@@ -156,16 +170,44 @@ module side_wall(x) {
     }
 }
 
+module brick_roof() {
+    arch_length = PI * tunnel_radius;
+    
+    // Rounding it after dividing by 2 ensures there is always a brick at the very top.
+    // Dividing it by 4 makes sure the brick on top is vertical
+    row_count = round(arch_length / brick_height / 4) * 4;
+    
+    for (i = [0:row_count]) {
+        angle = i * 180 / row_count;
+        x = -brick_tunnel_radius * cos(angle);
+        z = side_wall_height - thickness + brick_tunnel_radius * sin(angle);
+        tunnel_brick_row(x, i%2==0 ? brick_row_offset : 0, z, angle);
+    }
+}
+
 module tunnel() {
     profile = tunnel_profile();
     tunnel_sweep(profile);
     side_wall(-brick_tunnel_radius);
     side_wall(brick_tunnel_radius);    
+    brick_roof();
 }
 
 module envelope() {
     profile = tunnel_envelope_profile();
     tunnel_sweep(profile);
+    
+    inner_profile = tunnel_inner_envelope_profile();
+    
+    if (straight) {
+        back(envelope_extra_angle) tunnel_sweep(inner_profile);        
+    } else {
+        up(envelope_extra_height)
+        left(curve_radius)
+        zrot(envelope_extra_angle)
+        right(curve_radius)
+        tunnel_sweep(inner_profile);
+    }
 }
 
 intersection() {
@@ -173,17 +215,20 @@ intersection() {
     envelope();
 }
 
+// envelope();
+
 down(12) {
     profile = floor_profile();
     tunnel_sweep(profile);
 }
 
-module tunnel_brick_row(x=0, offset=0, z=0) {
+module tunnel_brick_row(x=0, offset=0, z=0, angle=0) {
     brick_count = round(track_length / brick_length);
     brick_length = track_length / brick_count;
 
     for (i = [1:brick_count]) {
         tunnel_translate([x, offset + (i-0.5) * brick_length, z + brick_height/2-brick_gap/2])
+            yrot(straight ? angle : -angle)
             zrot(90)
                 brick(brick_length);
     }
