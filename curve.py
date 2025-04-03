@@ -1,16 +1,16 @@
-import cadquery as cq
+from openscad import *
 
-def make_helix(radius, angle, grade, lefthand):
-    length = radius * angle * 2 * math.PI / 360
-    pitch = radius * 2 * PI * grade
-    height = length * grade
-    return cq.Wire.makeHelix(pitch=pitch, height=height, radius=radius, lefthand=lefthand)
+bosl = osinclude("BOSL2/std.scad")
 
-def station_tunnel_curve():
-    wires = [
-        make_helix(150, 45, 0.04, False)
-    ]
-    wire = cq.Wire.makeHelix(pitch=p, height=h, radius=r)
-    shape = cq.Wire.combine([wire])
-    helix = cq.Workplane(obj=shape)
-    
+def split_triangles(points, faces, resolution):
+    print("points:", points)
+    print("faces:", faces)
+    return (points, faces)
+
+if __name__ == "__main__":
+    c = cube([10, 40, 10])
+    (points, faces) = c.mesh()
+    resolution = 10
+    (split_points, split_faces) = split_triangles(points, faces, resolution)
+    v = polyhedron(points, faces);
+    v.show()
