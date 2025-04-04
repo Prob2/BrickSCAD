@@ -1,0 +1,30 @@
+{
+    "fileFormatVersion": "1",
+    "parameterSets": {
+        "New set 1": {
+            "ballast_height": "5.0999999999999996",
+            "ballast_width": "18",
+            "brick_chamfer": "0.20000000000000001",
+            "brick_depth": "0.40000000000000002",
+            "brick_gap": "0.80000000000000004",
+            "brick_height": "2.3999999999999999",
+            "brick_length": "6",
+            "brick_randomness": "0.20000000000000001",
+            "brick_width": "4",
+            "clearance": "0.14999999999999999",
+            "curve_angle": "15",
+            "curve_radius": "150",
+            "floor_ballast_height": "4",
+            "floor_side_support_height": "8",
+            "floor_side_wall_height": "6",
+            "grade_percent": "4",
+            "left": "true",
+            "side_height": "24",
+            "straight": "false",
+            "straight_track_length": "128",
+            "thickness": "1",
+            "track_width": "25.5",
+            "tunnel_radius": "17"
+        }
+    }
+}
