@@ -5,6 +5,7 @@ Include_tunnel = true;
 Include_floor = true;
 Include_portal = true;
 Include_portal_frame = true;
+Include_separate_frame = true;
 
 /* [Brick parameters] */
 brick_length = 5.6;
@@ -21,6 +22,7 @@ brick_depth = 0.6;
 tunnel_radius = 16;
 // Tunnel side height [mm]
 side_height = 23.8;
+tunnel_roof_step = 5;
 
 /* [Tunnel floor] */
 floor_side_wall_height = 6;
@@ -30,10 +32,11 @@ floor_ballast_height = 4;
 floor_off_center = 1;
 
 /* [Tunnel Portal] */
-portal_width_left = 16;
-portal_width_right = 16;
+portal_width_left = 10;
+portal_width_right = 10;
 portal_height_top = 8;
 portal_chamfer = 16;
+portal_frame_depth = 20;
 
 /* [Track curve] */
 
@@ -79,28 +82,28 @@ envelope_extra_angle = 5 * turn_sign;
 envelope_extra_length = curve_radius * envelope_extra_angle * PI / 180.0;
 envelope_extra_height = envelope_extra_length * grade * turn_sign;
 
-function tunnel_profile(step = 5) = 
+function tunnel_profile(step = 5, wh = side_wall_height) = 
     let (tr = tunnel_radius + thickness)
     [
         [-tunnel_radius, 0],
-        [-tunnel_radius, side_wall_height],
-        for (a = [0:step:180]) [-tunnel_radius * cos(a), side_wall_height + tunnel_radius * sin(a)],
-        [tunnel_radius, side_wall_height],
+        [-tunnel_radius, wh],
+        for (a = [0:step:180]) [-tunnel_radius * cos(a), wh + tunnel_radius * sin(a)],
+        [tunnel_radius, wh],
         [tunnel_radius, 0],
         [tr, 0],
-        [tr, side_wall_height],
-        for (a = [180:-step:0]) [-tr * cos(a), side_wall_height + tr * sin(a)],
+        [tr, wh],
+        for (a = [180:-step:0]) [-tr * cos(a), wh + tr * sin(a)],
         [-tr, side_wall_height],
         [-tr, 0],
     ];
     
-function tunnel_envelope_profile(r, h, t, step = 5) = 
+function tunnel_envelope_profile(step = 5, wh = side_wall_height) = 
     let (tr = tunnel_radius + thickness)
     [
         [tr, 0],
-        [tr, side_wall_height],
-        for (a = [180:-step:0]) [-tr * cos(a), side_wall_height + tr * sin(a)],
-        [-tr, side_wall_height],
+        [tr, wh],
+        for (a = [180:-step:0]) [-tr * cos(a), wh + tr * sin(a)],
+        [-tr, wh],
         [-tr, 0],
     ];
     
@@ -241,10 +244,10 @@ module brick(length = brick_length, width = brick_width, height = brick_height, 
 module side_wall(x) {
     row_count = round(side_wall_height / brick_height);
     for (i = [0:row_count-1]) {
-        tunnel_brick_row(x, i%2==0 ? brick_row_offset : 0, i * brick_height);
+        tunnel_brick_row(x, i%2==1 ? brick_row_offset : 0, i * brick_height);
         
         end_x = x - sign(x) * (brick_wall_offset - thickness/2);
-        end_y = (i%2==0) ? track_length : 0;
+        end_y = (i%2==1) ? track_length : 0;
         tunnel_translate_direct([0, end_y, 0]) {
             brick_end_sweep(-end_x, (i+0.5) * brick_height);
         }
@@ -267,7 +270,7 @@ module front_wall(x) {
 arch_length = PI * tunnel_radius;
 // Rounding it after dividing by 2 ensures there is always a brick at the very top.
 // Dividing it by 4 makes sure the brick on top is vertical
-roof_row_count = round(arch_length / brick_height / 4-0.5) * 4 + 2;
+roof_row_count = round(arch_length / brick_height / 4) * 4;
 
 module brick_roof(odd=false) {
     for (i = [0:roof_row_count]) {
@@ -294,7 +297,7 @@ module tunnel() {
     side_wall(brick_tunnel_radius);
     
     side_row_count = round(side_wall_height / brick_height);
-    brick_roof(odd=(side_row_count % 2) == 1);
+    brick_roof(odd=(side_row_count % 2) == 0);
 }
 
 module envelope() {
@@ -355,20 +358,24 @@ module tunnel_entrance() {
     width = 2*radius + portal_width_left + portal_width_right;
     height = side_height + radius + portal_height_top;
         
+    z_offset = floor_side_wall_height - 2 * brick_height;
+    up(z_offset)
     left(radius) {
         mirror([1, 0, 0])
-            brick_wall(portal_width_left, side_height);
+            brick_wall(portal_width_left, side_height-z_offset);
     }
+    up(z_offset)
     right(radius) {
-        brick_wall(portal_width_right, side_height);
+        brick_wall(portal_width_right, side_height-z_offset);
     }
     
     up(side_height) {
-        brick_arch(radius-2*brick_gap);
+        brick_arch(radius+brick_gap);
         
-        difference() {        
+        difference() {
+        down(z_offset)
             left(radius + portal_width_left) {
-                brick_wall(width, tunnel_radius + portal_height_top);
+                brick_wall(width, tunnel_radius + portal_height_top, symm=true);
             }
             xrot(90) {
                 chamfered_cut_cylinder(r=radius+brick_length+brick_gap/2, h=brick_width-brick_gap);
@@ -382,14 +389,13 @@ module tunnel_entrance() {
         up(height/2) {
             cube([width, thickness, height], center=true);
         }
-        up(side_height/2) {
-            cube([2*radius+2*brick_gap, 2, side_height], center=true);
-        }
-        up(side_height) {
-            xrot(90)
-                cylinder(h=2, r=radius+brick_gap, center=true);
-        }
+        back(1)
+        xrot(90)
+        linear_sweep(tunnel_envelope_profile(wh = side_height), 3);
     }
+    back(brick_length-2)
+    xrot(90)
+    linear_sweep(tunnel_profile(wh = side_height), brick_length-1);
 }
 
 module mirror_if_left(plane=[0, 1, 0]) {
@@ -404,13 +410,52 @@ if (Include_portal) {
     mirror_if_left() {
         mirror([0, 1, 0])
         fwd(brick_length-brick_width)
-        down(floor_side_wall_height)
+        down(floor_side_wall_height) {
+        intersection() {
             tunnel_entrance();
+            tunnel_entrance_envelope();
+            }
+        }
     }
 }
 
+module portal_frame(include_bottom=false) {
+    radius = tunnel_radius - brick_gap;
+    height = side_height+radius+portal_height_top;
+    width = 2*radius + portal_width_left + portal_width_right;
 
-module brick_arch(inner_radius, alternating = true) {
+    mirror_if_left()
+    fwd(portal_frame_depth - brick_width/2)
+    down(floor_side_wall_height) {
+        left(radius + portal_width_left) {
+            cube([thickness, portal_frame_depth, height]);
+        }
+        right(radius + portal_width_right - thickness) {
+            cube([thickness, portal_frame_depth, height]);
+        }
+        left(radius + portal_width_left) {
+            up(height-thickness)
+            cube([width, portal_frame_depth, thickness]);
+        }
+        if (include_bottom) {
+            left(radius + portal_width_left) {
+                cube([width, portal_frame_depth, thickness]);
+            }
+        }
+    }
+}
+
+if (Include_portal_frame) {
+    portal_frame(include_bottom=false);
+}
+
+if (Include_separate_frame) {
+    right(2*tunnel_radius + portal_width_left + portal_width_right + 20)
+    portal_frame(include_bottom=true);
+}
+
+
+module brick_arch(inner_radius, alternating = true, odd=false) {
   radius = tunnel_radius - brick_gap + brick_length/2;
 
   hl = brick_length / 2;
@@ -420,7 +465,7 @@ module brick_arch(inner_radius, alternating = true) {
     angle = i * 180 / roof_row_count;
     yrot(-angle)
       right(radius) {
-        if (!alternating || i % 2 == 0) {
+        if (!alternating || i % 2 == 1) {
           brick(radius = radius, length = brick_length, height = brick_height);
         } else {
           back(brick_length / 2 - brick_width / 2) {
@@ -432,4 +477,116 @@ module brick_arch(inner_radius, alternating = true) {
         }
       }
   }
+}
+
+
+function flatten(l) =
+  [
+    for (a = l)
+      for (b = a)
+        b
+  ];
+
+function row_brick_length(row_length) =
+  let (brick_count = round(row_length / brick_length))
+    let (brick_length = row_length / brick_count)
+      [brick_count, brick_length];
+
+function row_points(c, l, e, h, is_odd) =
+  let (lw = (brick_length - brick_width) / 2)
+    is_odd ? [
+      [brick_width / 2, lw, e + h / 2, brick_width, brick_length, h], 
+      if (c > 0)
+        for (i = [1:c])
+          [brick_width - l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
+    ] : [
+      if (c > 0)
+        for (i = [1:c])
+          [-l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
+      [(c) * l + brick_width / 2, lw, e + h / 2, brick_width, brick_length, h], 
+    ];
+
+function row_points_open(c, l, e, h, is_odd) =
+  let (s = is_odd ? brick_width - brick_length : 0)
+    [for (i = [0:c-1])
+      [s + l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
+    ];
+
+function row_points_symm(c, l, e, h, is_odd) =
+  let (lw = (l - brick_width) / 2)
+    is_odd ? [
+      [l / 4, lw, e + h / 2, l / 2, l, h], 
+      if (c >= 1)
+        for (i = [1:c - 1])
+          [i * l, 0, e + h / 2, l, brick_width, h], 
+      [(c) * l - l / 4, lw, e + h / 2, l / 2, l, h], 
+    ] : [
+      if (c >= 1)
+        for (i = [1:c])
+          [-l / 2 + i * l, 0, e + h / 2, l, brick_width, h], 
+    ];
+
+function wall_points(length, height, invert_odd) =
+  let (whole_brick_length = length - brick_width)
+    let (whole_brick_count = round(whole_brick_length / brick_length))
+      let (i_brick_length = whole_brick_length / whole_brick_count)
+        let (row_brick_count = whole_brick_count)
+          let (row_count = round(height / brick_height))
+            let (i_brick_height = height / row_count)
+              flatten([
+                for (r = [0:row_count - 1])
+                  row_points(row_brick_count, i_brick_length, r * brick_height, brick_height, (r % 2 == 0) == invert_odd), 
+              ]);
+
+function wall_points_open(length, height, invert_odd) =
+  let (whole_brick_length = length)
+    let (whole_brick_count = round(whole_brick_length / brick_length))
+      let (i_brick_length = whole_brick_length / whole_brick_count)
+        let (row_brick_count = whole_brick_count)
+          let (row_count = round(height / brick_height))
+            let (i_brick_height = height / row_count)
+              flatten([
+                for (r = [0:row_count - 1])
+                  row_points_open(row_brick_count, i_brick_length, r * brick_height, brick_height, (r % 2 == 0) == invert_odd), 
+              ]);
+
+function wall_points_symm(length, height, invert_odd) =
+  let (row_brick_count = round(length / brick_length))
+    let (i_brick_length = length / row_brick_count)
+      let (row_count = round(height / brick_height))
+        let (i_brick_height = height / row_count)
+          flatten([
+            for (r = [0:row_count - 1])
+              row_points_symm(row_brick_count, i_brick_length, r * brick_height, brick_height, (r % 2 == 0) == invert_odd), 
+          ]);
+
+          
+module brick_wall(length, height, symm = false, holes=[], invert_odd=false, open=false, radius=0) {
+  points = (symm) ? wall_points_symm(length, height, invert_odd) : open ? wall_points_open(length, height, invert_odd) : wall_points(length, height, invert_odd);
+  for(p = points) {
+    pos = [p[0], p[1], p[2]];
+    translate(pos) {
+      angle_cut = (len(holes) > 0) ? brick_cut_angle(pos, holes[0]) : [true, 0, 0];
+      if (angle_cut[0]) {
+        brick(length = p[3], width = p[4], height = p[5], cut_angle=angle_cut[1]);
+    }}
+  }
+}
+
+
+module tunnel_entrance_envelope() {
+    radius = tunnel_radius - brick_gap;
+    width = 2*radius + portal_width_left + portal_width_right;
+    height = side_height + radius + portal_height_top;
+         
+    // Mortar
+    fwd(brick_width/2-thickness)
+    union() {
+        up(height/2) {
+            cube([width, thickness+2*brick_depth, height], center=true);
+        }
+        back(brick_length)
+        xrot(90)
+        linear_sweep(tunnel_envelope_profile(wh = side_height), brick_length);
+    }
 }
