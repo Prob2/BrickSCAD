@@ -1,7 +1,13 @@
 include <BOSL2/std.scad>
 
+/* [Included components] */
+Include_tunnel = true;
+Include_floor = true;
+Include_portal = true;
+Include_portal_frame = true;
+
 /* [Brick parameters] */
-brick_length = 6;
+brick_length = 5.6;
 brick_width = 4;
 brick_height = 2.4; // [2:0.05:4]
 
@@ -12,9 +18,9 @@ brick_depth = 0.6;
 
 /* [Tunnel roof] */
 // Tunnel radius [mm]
-tunnel_radius = 17;
+tunnel_radius = 16;
 // Tunnel side height [mm]
-side_height = 24;
+side_height = 23.8;
 
 /* [Tunnel floor] */
 floor_side_wall_height = 6;
@@ -23,19 +29,25 @@ floor_ballast_height = 4;
 
 floor_off_center = 1;
 
+/* [Tunnel Portal] */
+portal_width_left = 16;
+portal_width_right = 16;
+portal_height_top = 8;
+portal_chamfer = 16;
+
 /* [Track curve] */
 
 // Track curve radius
 straight = false;
 curve_radius = 150; // [150, 183, 216, 249, 282, 315, 348]
-curve_angle = 15; // [5, 15, 22.5, 30, 45, 60, 75, 90]
+curve_angle = 5; // [5, 15, 22.5, 30, 45, 60, 75, 90]
 grade_percent = 4.0; // [0.0:0.5:6]
 left = false;
 straight_track_length = 128;
 
 /* [Common Kato Unitrack sizes] */
-track_width = 25.5;
-ballast_width=18;
+track_width = 26;
+ballast_width=18.5;
 ballast_height=5.1;
 
 /* [3D printing parameters] */
@@ -177,8 +189,53 @@ module tunnel_translate_direct(pos) {
     tunnel_translate(pos, do_rotate=false, do_scale=false) children();
 }
 
-module brick(brick_length = brick_length) {
-    cuboid([brick_length-brick_gap, brick_width-brick_gap, brick_height-brick_gap], chamfer=brick_chamfer);
+
+module brick_base(size, chamfer = brick_chamfer) {
+  cuboid(size, chamfer = chamfer);
+}
+
+function cut_length(height, angle) = height * tan(angle);
+
+module brick(length = brick_length, width = brick_width, height = brick_height, rf = brick_randomness, radius = 0, gap = brick_gap, chamfer = brick_chamfer, cut_angle=0) {
+
+  r = rands(-rf, rf, 7);
+  rrot = rands(-10 * rf, 10 * rf, 3);
+
+  stretch = (radius != 0) ? (height / radius / PI) : 0;
+    
+  cut_factor = tan(cut_angle);
+  cut_x = cut_length(height-gap, cut_angle);
+    
+  if (abs(cut_x) > length - gap - rf - 2*chamfer) {
+      color("red") {
+          cube(1, 1, 1);
+      }
+  } else {
+
+      size = [length - gap + r[0] - abs(cut_x), width - gap + r[1], height - gap + r[2] - stretch * length];
+
+      rotate(rrot) {
+        hull() {
+          left(cut_x/2)
+            brick_base(size, chamfer);
+
+          if (radius != 0) {
+              up(stretch / 2 * length)
+                skew(szx = stretch)
+                  brick_base(size, chamfer);
+              down(stretch / 2 * length)
+                skew(szx = -stretch)
+                  brick_base(size, chamfer);
+          }
+          
+          if (cut_angle != 0) {
+              right(0)
+              skew(sxz = cut_factor)
+                brick_base(size, chamfer);          
+          }
+        }
+      }
+    }
 }
 
 module side_wall(x) {
@@ -194,15 +251,27 @@ module side_wall(x) {
     }
 }
 
+module front_brick_row(x, is_odd) {
+    brick_count = round((x + brick_row_offset) / brick_length);
+}
+
+module front_wall(x) {
+    row_count = round(side_wall_height / brick_height);
+    for (i = [0:row_count-1]) {
+        translate([0, 0, i*brick_height]) {
+            front_brick_row(x, i%2==0 ? brick_row_offset : 0, i * brick_height);
+        }
+    }
+}
+
+arch_length = PI * tunnel_radius;
+// Rounding it after dividing by 2 ensures there is always a brick at the very top.
+// Dividing it by 4 makes sure the brick on top is vertical
+roof_row_count = round(arch_length / brick_height / 4-0.5) * 4 + 2;
+
 module brick_roof(odd=false) {
-    arch_length = PI * tunnel_radius;
-    
-    // Rounding it after dividing by 2 ensures there is always a brick at the very top.
-    // Dividing it by 4 makes sure the brick on top is vertical
-    row_count = round(arch_length / brick_height / 4) * 4;
-    
-    for (i = [0:row_count]) {
-        angle = i * 180 / row_count;
+    for (i = [0:roof_row_count]) {
+        angle = i * 180 / roof_row_count;
         x = -brick_tunnel_radius * cos(angle);
         z = side_wall_height - thickness + brick_tunnel_radius * sin(angle);
         tunnel_brick_row(x, (i%2==1) == odd ? brick_row_offset : 0, z, angle);
@@ -222,8 +291,10 @@ module tunnel() {
     tunnel_translate_direct([0, brick_row_offset, 0])
         tunnel_sweep(profile, extra_length=-brick_row_offset);
     side_wall(-brick_tunnel_radius);
-    side_wall(brick_tunnel_radius);    
-    brick_roof(odd=true);
+    side_wall(brick_tunnel_radius);
+    
+    side_row_count = round(side_wall_height / brick_height);
+    brick_roof(odd=(side_row_count % 2) == 1);
 }
 
 module envelope() {
@@ -246,16 +317,18 @@ module envelope() {
     */
 }
 
-intersection() {
-    tunnel();
-    envelope();
+if (Include_tunnel) {
+    intersection() {
+        tunnel();
+        envelope();
+    }
 }
 
-// envelope();
-
-down(12) {
-    profile = floor_profile();
-    tunnel_sweep(profile);
+if (Include_floor) {
+    down(12) {
+        profile = floor_profile();
+        tunnel_sweep(profile);
+    }
 }
 
 module tunnel_brick_row(x=0, offset=0, z=0, angle=0) {
@@ -268,4 +341,95 @@ module tunnel_brick_row(x=0, offset=0, z=0, angle=0) {
             zrot(90)
                 brick(brick_length);
     }
+}
+
+module chamfered_cut_cylinder(r, h) {
+    cylinder(h=h+2*brick_chamfer, r=r, center=true);
+    
+    up(h/2 + 1*brick_chamfer)
+        cylinder(h=4*brick_chamfer, r1=r, r2=r+4*brick_chamfer, center=true);
+}
+
+module tunnel_entrance() {
+    radius = tunnel_radius - brick_gap;
+    width = 2*radius + portal_width_left + portal_width_right;
+    height = side_height + radius + portal_height_top;
+        
+    left(radius) {
+        mirror([1, 0, 0])
+            brick_wall(portal_width_left, side_height);
+    }
+    right(radius) {
+        brick_wall(portal_width_right, side_height);
+    }
+    
+    up(side_height) {
+        brick_arch(radius-2*brick_gap);
+        
+        difference() {        
+            left(radius + portal_width_left) {
+                brick_wall(width, tunnel_radius + portal_height_top);
+            }
+            xrot(90) {
+                chamfered_cut_cylinder(r=radius+brick_length+brick_gap/2, h=brick_width-brick_gap);
+            }
+        }
+    }
+
+    // Mortar
+    fwd(brick_width/2-brick_depth-thickness)
+    difference() {
+        up(height/2) {
+            cube([width, thickness, height], center=true);
+        }
+        up(side_height/2) {
+            cube([2*radius+2*brick_gap, 2, side_height], center=true);
+        }
+        up(side_height) {
+            xrot(90)
+                cylinder(h=2, r=radius+brick_gap, center=true);
+        }
+    }
+}
+
+module mirror_if_left(plane=[0, 1, 0]) {
+    if (left) {
+        mirror(plane) children();
+    } else {
+        children();
+    }
+}
+
+if (Include_portal) {
+    mirror_if_left() {
+        mirror([0, 1, 0])
+        fwd(brick_length-brick_width)
+        down(floor_side_wall_height)
+            tunnel_entrance();
+    }
+}
+
+
+module brick_arch(inner_radius, alternating = true) {
+  radius = tunnel_radius - brick_gap + brick_length/2;
+
+  hl = brick_length / 2;
+  ql = brick_length / 4;
+
+  for(i = [0:roof_row_count]) {
+    angle = i * 180 / roof_row_count;
+    yrot(-angle)
+      right(radius) {
+        if (!alternating || i % 2 == 0) {
+          brick(radius = radius, length = brick_length, height = brick_height);
+        } else {
+          back(brick_length / 2 - brick_width / 2) {
+            left(ql)
+              brick(radius = radius - ql, length = hl, height = brick_height * (radius - ql) / radius, width = brick_length);
+            right(ql)
+              brick(radius = radius + ql, length = hl, height = brick_height * (radius + ql) / radius, width = brick_length);
+          }
+        }
+      }
+  }
 }
