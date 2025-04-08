@@ -10,7 +10,7 @@ Include_separate_frame = true;
 /* [Brick parameters] */
 brick_length = 5.6;
 brick_width = 4;
-brick_height = 2.4; // [2:0.05:4]
+brick_height = 2.25; // [2:0.05:4]
 
 brick_randomness = 0.2;
 brick_gap = 0.8;
@@ -34,8 +34,8 @@ floor_off_center = 1;
 /* [Tunnel Portal] */
 portal_width_left = 10;
 portal_width_right = 10;
-portal_height_top = 8;
-portal_chamfer = 16;
+portal_height_top = 7.5;
+portal_chamfer = 10;
 portal_frame_depth = 20;
 
 /* [Track curve] */
@@ -81,6 +81,11 @@ brick_tunnel_radius = tunnel_radius + brick_wall_offset;
 envelope_extra_angle = 5 * turn_sign;
 envelope_extra_length = curve_radius * envelope_extra_angle * PI / 180.0;
 envelope_extra_height = envelope_extra_length * grade * turn_sign;
+
+portal_radius = tunnel_radius - brick_gap;
+portal_width = 2*portal_radius + portal_width_left + portal_width_right;
+portal_height = side_height + portal_radius + portal_height_top;
+portal_chamfer_size = portal_width + portal_height;
 
 function tunnel_profile(step = 5, wh = side_wall_height) = 
     let (tr = tunnel_radius + thickness)
@@ -272,9 +277,11 @@ arch_length = PI * tunnel_radius;
 // Dividing it by 4 makes sure the brick on top is vertical
 roof_row_count = round(arch_length / brick_height / 4) * 4;
 
+function roof_angle(i) = (i+0.5) * 180 / (roof_row_count+1);
+
 module brick_roof(odd=false) {
     for (i = [0:roof_row_count]) {
-        angle = i * 180 / roof_row_count;
+        angle = roof_angle(i);
         x = -brick_tunnel_radius * cos(angle);
         z = side_wall_height - thickness + brick_tunnel_radius * sin(angle);
         tunnel_brick_row(x, (i%2==1) == odd ? brick_row_offset : 0, z, angle);
@@ -370,16 +377,15 @@ module tunnel_entrance() {
     }
     
     up(side_height) {
-        brick_arch(radius+brick_gap);
+        brick_arch(radius+brick_gap, odd=true);
         
         difference() {
-        down(z_offset)
-            left(radius + portal_width_left) {
-                brick_wall(width, tunnel_radius + portal_height_top, symm=true);
-            }
-            xrot(90) {
-                chamfered_cut_cylinder(r=radius+brick_length+brick_gap/2, h=brick_width-brick_gap);
-            }
+        left(radius + portal_width_left) {
+            brick_wall(width, tunnel_radius + portal_height_top, symm=true);
+        }
+        xrot(90) {
+            chamfered_cut_cylinder(r=radius+brick_length+brick_gap/2, h=brick_width-brick_gap);
+        }
         }
     }
 
@@ -406,15 +412,33 @@ module mirror_if_left(plane=[0, 1, 0]) {
     }
 }
 
+module xz_translate(distance, left=true) {
+    translate([left ? distance/sqrt(2) : -distance/sqrt(2), 0, distance/sqrt(2)]) children();
+}
+
 if (Include_portal) {
     mirror_if_left() {
         mirror([0, 1, 0])
         fwd(brick_length-brick_width)
         down(floor_side_wall_height) {
+        difference() {
         intersection() {
             tunnel_entrance();
             tunnel_entrance_envelope();
             }
+            
+            fwd(brick_width/2)
+            up(portal_height)
+            left(portal_radius+portal_width_left)
+            xz_translate(portal_chamfer_size/2 - portal_chamfer, left=false)
+            entrance_chamfer_cut();
+            
+            fwd(brick_width/2)
+            up(portal_height)
+            right(portal_radius+portal_width_right)
+            xz_translate(portal_chamfer_size/2 - portal_chamfer, left=true)
+            entrance_chamfer_cut();
+        }
         }
     }
 }
@@ -423,19 +447,32 @@ module portal_frame(include_bottom=false) {
     radius = tunnel_radius - brick_gap;
     height = side_height+radius+portal_height_top;
     width = 2*radius + portal_width_left + portal_width_right;
+    chamfer_length = portal_chamfer * sqrt(2);
 
     mirror_if_left()
     fwd(portal_frame_depth - brick_width/2)
     down(floor_side_wall_height) {
         left(radius + portal_width_left) {
-            cube([thickness, portal_frame_depth, height]);
+            cube([thickness, portal_frame_depth, height-chamfer_length]);
+            
+            if (portal_chamfer > 0)
+            up(height-chamfer_length)
+            yrot(45)
+            cube([thickness, portal_frame_depth, 2*portal_chamfer]);
         }
         right(radius + portal_width_right - thickness) {
-            cube([thickness, portal_frame_depth, height]);
+            cube([thickness, portal_frame_depth, height-chamfer_length]);
+            
+            if (portal_chamfer > 0)
+            up(height-chamfer_length)
+            right(thickness)
+            yrot(-45)
+            left(thickness)
+            cube([thickness, portal_frame_depth, 2*portal_chamfer]);
         }
-        left(radius + portal_width_left) {
+        left(radius + portal_width_left - chamfer_length) {
             up(height-thickness)
-            cube([width, portal_frame_depth, thickness]);
+            cube([width-2*chamfer_length, portal_frame_depth, thickness]);
         }
         if (include_bottom) {
             left(radius + portal_width_left) {
@@ -462,10 +499,10 @@ module brick_arch(inner_radius, alternating = true, odd=false) {
   ql = brick_length / 4;
 
   for(i = [0:roof_row_count]) {
-    angle = i * 180 / roof_row_count;
+    angle = roof_angle(i);
     yrot(-angle)
       right(radius) {
-        if (!alternating || i % 2 == 1) {
+        if (!alternating || (i % 2 == 0) == odd) {
           brick(radius = radius, length = brick_length, height = brick_height);
         } else {
           back(brick_length / 2 - brick_width / 2) {
@@ -586,7 +623,29 @@ module tunnel_entrance_envelope() {
             cube([width, thickness+2*brick_depth, height], center=true);
         }
         back(brick_length)
+        up(floor_side_wall_height)
         xrot(90)
-        linear_sweep(tunnel_envelope_profile(wh = side_height), brick_length);
+        linear_sweep(tunnel_envelope_profile(wh = side_wall_height), brick_length);
+        
+        back(brick_width/2+thickness)
+        xrot(90)
+        linear_sweep(tunnel_envelope_profile(wh = side_height), brick_width);
     }
+}
+
+module entrance_chamfer_cut() {
+color("blue")
+            back(brick_depth+thickness/2 - brick_depth/2 - brick_chamfer)
+yrot(45)
+xrot(90)
+    cuboid(
+    [portal_chamfer_size+brick_gap,portal_chamfer_size+brick_gap,brick_depth+2*brick_chamfer], chamfer=-3*brick_chamfer, edges=[TOP]);
+    
+    color("red")
+            back(portal_frame_depth/2+brick_depth+thickness/2)
+yrot(45)
+xrot(90)
+    cuboid(
+    [portal_chamfer_size,portal_chamfer_size,portal_frame_depth]);
+    
 }
