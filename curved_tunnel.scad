@@ -34,7 +34,7 @@ floor_ballast_height = 4;
 floor_off_center = 1;
 
 /* [Tunnel Portal] */
-portal_width_left = 10;
+portal_width_left = 70;
 portal_width_right = 10;
 portal_height_top = 7.5;
 portal_chamfer = 10;
@@ -398,6 +398,7 @@ module tunnel_entrance() {
     fwd(brick_width/2-brick_depth-thickness)
     difference() {
         up(height/2) {
+            left((portal_width_left-portal_width_right)/2)
             cube([width, thickness, height], center=true);
         }
         back(1)
@@ -654,6 +655,7 @@ module tunnel_entrance_envelope() {
     fwd(brick_width/2-thickness)
     union() {
         up(height/2) {
+            left((portal_width_left-portal_width_right)/2)
             cube([width, thickness+2*brick_depth, height], center=true);
         }
         back(brick_length)
