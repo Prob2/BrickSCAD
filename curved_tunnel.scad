@@ -6,6 +6,7 @@ Include_floor = true;
 Include_portal = true;
 Include_portal_frame = true;
 Include_separate_frame = true;
+Include_bricks = false;
 Extra_tunnel_segments = 0;
 
 /* [Brick parameters] */
@@ -38,15 +39,16 @@ portal_width_right = 10;
 portal_height_top = 7.5;
 portal_chamfer = 10;
 portal_frame_depth = 20;
+portal_angle = -20;
 
 /* [Track curve] */
 
 // Track curve radius
 straight = false;
-curve_radius = 150; // [150, 183, 216, 249, 282, 315, 348]
-curve_angle = 5; // [5, 15, 22.5, 30, 45, 60, 75, 90]
+curve_radius = 282; // [150, 183, 216, 249, 282, 315, 348]
+curve_angle = 22.5; // [5, 15, 22.5, 30, 45, 60, 75, 90]
 grade_percent = 4.0; // [0.0:0.5:6]
-left = false;
+left = true;
 straight_track_length = 128;
 
 /* [Common Kato Unitrack sizes] */
@@ -87,6 +89,8 @@ portal_radius = tunnel_radius - brick_gap;
 portal_width = 2*portal_radius + portal_width_left + portal_width_right;
 portal_height = side_height + portal_radius + portal_height_top;
 portal_chamfer_size = portal_width + portal_height;
+
+portal_angle_offset = tunnel_radius * abs(tan(portal_angle));
 
 function tunnel_profile(step = 5, wh = side_wall_height) = 
     let (tr = tunnel_radius + thickness)
@@ -301,11 +305,14 @@ module tunnel() {
     profile = tunnel_profile();
     tunnel_translate_direct([0, brick_row_offset, 0])
         tunnel_sweep(profile, extra_length=-brick_row_offset);
-    side_wall(-brick_tunnel_radius);
-    side_wall(brick_tunnel_radius);
-    
-    side_row_count = round(side_wall_height / brick_height);
-    brick_roof(odd=(side_row_count % 2) == 0);
+        
+    if (Include_bricks) {
+        side_wall(-brick_tunnel_radius);
+        side_wall(brick_tunnel_radius);
+        
+        side_row_count = round(side_wall_height / brick_height);
+        brick_roof(odd=(side_row_count % 2) == 0);
+    }
 }
 
 module envelope() {
@@ -331,6 +338,7 @@ module envelope() {
 if (Include_floor) {
     down(16) {
         profile = floor_profile();
+        portal_angle_cut()
         tunnel_sweep(profile);
     }
 }
@@ -358,6 +366,8 @@ module tunnel_entrance() {
     radius = tunnel_radius - brick_gap;
     width = 2*radius + portal_width_left + portal_width_right;
     height = side_height + radius + portal_height_top;
+    
+    if (Include_bricks) {
         
     z_offset = floor_side_wall_height - 2 * brick_height;
     up(z_offset)
@@ -381,6 +391,7 @@ module tunnel_entrance() {
             chamfered_cut_cylinder(r=radius+brick_length+brick_gap/2, h=brick_width-brick_gap);
         }
         }
+    }
     }
 
     // Mortar
@@ -410,15 +421,32 @@ module xz_translate(distance, left=true) {
     translate([left ? distance/sqrt(2) : -distance/sqrt(2), 0, distance/sqrt(2)]) children();
 }
 
+module portal_skew() {
+    back(portal_angle_offset)
+    skew(ayx=portal_angle) children();
+}
+
+module portal_angle_cut() {
+    difference() {
+        children();
+        fwd(portal_angle_offset)
+        portal_skew()
+        cuboid([2*tunnel_radius + 20, 2*portal_angle_offset+4, portal_height], anchor=BOTTOM);
+    }
+}
+
 union() {
     if (Include_tunnel) {
+        portal_angle_cut() {
         intersection() {
             tunnel();
             envelope();
         }
+        }
     }
 
     if (Include_portal) {
+        portal_skew()
         mirror_if_left() {
             mirror([0, 1, 0])
             fwd(brick_length-brick_width)
@@ -446,6 +474,7 @@ union() {
     }
 
     if (Include_portal_frame) {
+        portal_skew()
         portal_frame(include_bottom=false);
     }
 
@@ -453,6 +482,7 @@ union() {
 
 if (Include_separate_frame) {
     right(2*tunnel_radius + portal_width_left + portal_width_right + 20)
+    portal_skew()
     portal_frame(include_bottom=true);
 }
 
