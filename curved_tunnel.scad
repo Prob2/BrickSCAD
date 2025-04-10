@@ -6,8 +6,9 @@ Include_floor = true;
 Include_portal = true;
 Include_portal_frame = true;
 Include_separate_frame = true;
-Include_bricks = false;
+Include_bricks = true;
 Extra_tunnel_segments = 0;
+Include_cover = true;
 
 /* [Brick parameters] */
 brick_length = 5.6;
@@ -21,7 +22,7 @@ brick_depth = 0.6;
 
 /* [Tunnel roof] */
 // Tunnel radius [mm]
-tunnel_radius = 16;
+tunnel_radius = 17;
 // Tunnel side height [mm]
 side_height = 23.8;
 tunnel_roof_step = 5;
@@ -34,33 +35,35 @@ floor_ballast_height = 4;
 floor_off_center = 1;
 
 /* [Tunnel Portal] */
-portal_width_left = 70;
+portal_width_left = 10;
 portal_width_right = 10;
-portal_height_top = 7.5;
+portal_height_top = 8.5;
 portal_chamfer = 10;
 portal_frame_depth = 20;
-portal_angle = -20;
+portal_angle = 0;
 
 /* [Track curve] */
 
 // Track curve radius
 straight = false;
-curve_radius = 282; // [150, 183, 216, 249, 282, 315, 348]
-curve_angle = 22.5; // [5, 15, 22.5, 30, 45, 60, 75, 90]
-grade_percent = 4.0; // [0.0:0.5:6]
-left = true;
+curve_radius = 150; // [150, 183, 216, 249, 282, 315, 348]
+curve_angle = 30; // [5, 15, 22.5, 30, 45, 60, 75, 90]
+grade_percent = 3.0; // [0.0:0.5:6]
+left = false;
 straight_track_length = 128;
 
 /* [Common Kato Unitrack sizes] */
-track_width = 26;
-ballast_width=18.5;
-ballast_height=5.1;
+track_width = 26.5;
+ballast_width = 19;
+ballast_height = 5.1;
 
 /* [3D printing parameters] */
 // Tunnel wall thickness [mm]
 thickness = 1;
 // Clearance between separate printed parts [mm]
 clearance = 0.15;
+// Length of cover for joints between segments
+cover_length = 20;
 
 /* [Hidden] */
 grade = grade_percent / 100.0;
@@ -123,6 +126,23 @@ function tunnel_inner_envelope_profile(r, h, t, step = 5) =
         [tr, 0],
         [tr, side_wall_height],
         for (a = [180:-step:0]) [-tr * cos(a), side_wall_height + tr * sin(a)],
+        [-tr, side_wall_height],
+        [-tr, 0],
+    ];
+    
+function cover_profile(step = 5) = 
+    let (ir = tunnel_radius + 2*thickness + 2*clearance)
+    let (tr = ir + thickness)
+    let (wh = side_height)
+    [
+        [-ir, 0],
+        [-ir, wh],
+        for (a = [0:step:180]) [-ir * cos(a), wh + ir * sin(a)],
+        [ir, wh],
+        [ir, 0],
+        [tr, 0],
+        [tr, wh],
+        for (a = [180:-step:0]) [-tr * cos(a), wh + tr * sin(a)],
         [-tr, side_wall_height],
         [-tr, 0],
     ];
@@ -428,12 +448,14 @@ module portal_skew() {
 }
 
 module portal_angle_cut() {
+    if (Include_portal && portal_angle != 0)
     difference() {
         children();
         fwd(portal_angle_offset)
         portal_skew()
         cuboid([2*tunnel_radius + 20, 2*portal_angle_offset+4, portal_height], anchor=BOTTOM);
     }
+    else { children(); }
 }
 
 union() {
@@ -482,9 +504,16 @@ union() {
 }
 
 if (Include_separate_frame) {
-    right(2*tunnel_radius + portal_width_left + portal_width_right + 20)
+    right(portal_width + 20)
     portal_skew()
     portal_frame(include_bottom=true);
+}
+
+if (Include_cover) {
+    right(2*portal_width + 40) {
+        profile = cover_profile();
+        segment_sweep(profile, cover_length);
+    }
 }
 
 
