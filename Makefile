@@ -1,6 +1,10 @@
 OPENSCAD=openscad-nightly
 
-all: T1vhod.stl T1notranjost.stl T1tla.stl T1pokrov.stl T2vhod.stl T2notranjost.stl T2tla.stl
+t1: T1vhod.stl T1notranjost.stl T1tla.stl T1pokrov.stl
+
+t2: T2vhod.stl T2notranjost.stl T2tla.stl T2pokrov.stl
+
+all: t1 t2
 
 %.stl: curved_tunnel.scad curved_tunnel.json
 	$(OPENSCAD) --export-format binstl -o $@ -p curved_tunnel.json -P $* $<
