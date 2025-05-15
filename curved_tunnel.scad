@@ -42,6 +42,12 @@ portal_chamfer = 10;
 portal_frame_depth = 20;
 portal_angle = 0;
 
+/* [Tunnel Portal Side Walls] */
+portal_wall_left_width = 120;
+portal_wall_left_angle = 15;
+portal_wall_right_width = 0;
+portal_wall_right_angle = -15;
+
 /* [Track curve] */
 
 // Track curve radius
@@ -480,18 +486,47 @@ union() {
                 tunnel_entrance_envelope();
                 }
                 
+                if (portal_wall_right_width == 0)
                 fwd(brick_width/2)
                 up(portal_height)
                 left(portal_radius+portal_width_left)
                 xz_translate(portal_chamfer_size/2 - portal_chamfer, left=false)
                 entrance_chamfer_cut();
                 
+                if (portal_wall_left_width == 0)
                 fwd(brick_width/2)
                 up(portal_height)
                 right(portal_radius+portal_width_right)
                 xz_translate(portal_chamfer_size/2 - portal_chamfer, left=true)
                 entrance_chamfer_cut();
             }
+            
+            if (portal_wall_left_width > 0) {
+                right(portal_width/2 - ((portal_wall_left_angle>0) ? 0.25:0))
+                zrot(portal_wall_left_angle)
+                difference() {
+                    wall(portal_wall_left_width, portal_height);
+                    fwd(brick_width/2)
+                up(portal_height)
+                right(portal_wall_left_width)
+                xz_translate(portal_chamfer_size/2 - portal_chamfer, left=true)
+                entrance_chamfer_cut();
+                }
+            }
+            if (portal_wall_right_width > 0) {
+                left(portal_width/2 - ((portal_wall_right_angle>0) ? 0.25:0))
+                zrot(-portal_wall_right_angle)
+                left(portal_wall_right_width)
+                difference() {
+                wall(portal_wall_right_width, portal_height);
+                fwd(brick_width/2)
+                up(portal_height)
+                left(57)
+                xz_translate(portal_chamfer_size/2 - portal_chamfer, left=true)
+                entrance_chamfer_cut();
+                }
+            }
+            
             }
         }
     }
@@ -501,6 +536,28 @@ union() {
         portal_frame(include_bottom=false);
     }
 
+}
+
+module wall(width, height) {
+    y_offset = 0.9325;
+    fwd(y_offset)
+    cube([width, 1, height]);
+    
+    if (Include_bricks) {
+    z_offset = floor_side_wall_height - 2 * brick_height;
+    up(z_offset)
+        intersection() {
+            brick_wall(width, height-z_offset);
+            fwd(y_offset+4.5)
+            cube([width, 5, height]);
+        }
+    }
+    
+    if (Include_portal_frame) {
+        up(height-1) {
+            cube([width, portal_frame_depth, 1]);
+        }
+    }
 }
 
 if (Include_separate_frame) {
@@ -522,31 +579,39 @@ module portal_frame(include_bottom=false) {
     height = side_height+radius+portal_height_top;
     width = 2*radius + portal_width_left + portal_width_right;
     chamfer_length = portal_chamfer * sqrt(2);
+    
+    left_chamfer = (portal_wall_left_width == 0) ? portal_chamfer : 0;
+    left_chamfer_length = (portal_wall_left_width == 0) ? chamfer_length : 0;
+    right_chamfer = (portal_wall_right_width == 0) ? portal_chamfer : 0;
+    right_chamfer_length = (portal_wall_right_width == 0) ? chamfer_length : 0;
+    
+    echo(portal_wall_right_width, portal_wall_left_width);
+    echo(right_chamfer_length, left_chamfer_length);
 
     mirror_if_left()
     fwd(portal_frame_depth - brick_width/2)
     down(floor_side_wall_height) {
         left(radius + portal_width_left) {
-            cube([thickness, portal_frame_depth, height-chamfer_length]);
+            cube([thickness, portal_frame_depth, height-right_chamfer_length]);
             
-            if (portal_chamfer > 0)
-            up(height-chamfer_length)
+            if (right_chamfer > 0)
+            up(height-right_chamfer_length)
             yrot(45)
-            cube([thickness, portal_frame_depth, 2*portal_chamfer]);
+            cube([thickness, portal_frame_depth, 2*right_chamfer]);
         }
         right(radius + portal_width_right - thickness) {
-            cube([thickness, portal_frame_depth, height-chamfer_length]);
+            cube([thickness, portal_frame_depth, height-left_chamfer_length]);
             
-            if (portal_chamfer > 0)
-            up(height-chamfer_length)
+            if (left_chamfer > 0)
+            up(height-left_chamfer_length)
             right(thickness)
             yrot(-45)
             left(thickness)
-            cube([thickness, portal_frame_depth, 2*portal_chamfer]);
+            cube([thickness, portal_frame_depth, 2*left_chamfer]);
         }
-        left(radius + portal_width_left - chamfer_length) {
+        left(radius + portal_width_left - right_chamfer_length) {
             up(height-thickness)
-            cube([width-2*chamfer_length, portal_frame_depth, thickness]);
+            cube([width-left_chamfer_length-right_chamfer_length, portal_frame_depth, thickness]);
         }
         if (include_bottom) {
             left(radius + portal_width_left) {
@@ -711,6 +776,6 @@ xrot(90)
 yrot(45)
 xrot(90)
     cuboid(
-    [portal_chamfer_size,portal_chamfer_size,portal_frame_depth]);
+    [portal_chamfer_size,portal_chamfer_size,portal_frame_depth+5]);
     
 }
