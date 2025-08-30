@@ -36,6 +36,8 @@ brick_gap = 0.8;
 brick_chamfer = 0.2;
 brick_depth = 0.6;
 
+odd_row_offset = brick_length / 2;
+
 $fn = 90;
 
 function bridge_bend(c) = vnf_bend(skew(c, szx=grade/100.0), r=radius, axis="Z");
@@ -216,6 +218,23 @@ function row_brick_length(row_length) =
   let (brick_count = round(row_length / brick_length))
     let (brick_length = row_length / brick_count)
       [brick_count, brick_length];
+      
+function row_points_offset(c, l, e, h, is_odd) = 
+  let (lw = (brick_length - brick_width) / 2)
+    let (first_offset = is_odd ? odd_row_offset : 0)
+      [for (i = [1:c]) [-l/2 + i * l + first_offset, 0, e+h/2, l, brick_width, h]];
+
+function wall_points_offset(length, height, invert_odd) =
+  let (whole_brick_length = length)
+    let (whole_brick_count = round(whole_brick_length / brick_length))
+      let (i_brick_length = whole_brick_length / whole_brick_count)
+        let (row_brick_count = whole_brick_count)
+          let (row_count = round(height / brick_height))
+            let (i_brick_height = height / row_count)
+              flatten([
+                for (r = [0:row_count - 1])
+                  row_points_offset(row_brick_count, i_brick_length, r * brick_height, brick_height, (r % 2 == 0) == invert_odd), 
+              ]);
 
 function row_points(c, l, e, h, is_odd) =
   let (lw = (brick_length - brick_width) / 2)
@@ -287,7 +306,7 @@ function wall_points_symm(length, height, invert_odd) =
 
           
 module brick_wall(length, height, out = 0, symm = false, holes=[], invert_odd=false, open=false, radius=0) {
-  points = (symm) ? wall_points_symm(length, height, invert_odd) : open ? wall_points_open(length, height, invert_odd) : wall_points(length, height, invert_odd);
+  points = (symm) ? wall_points_symm(length, height, invert_odd) : open ? wall_points_open(length, height, invert_odd) : wall_points_offset(length, height, invert_odd);
   for(p = points) {
     pos = [p[0], p[1], p[2]];
     bridge_translate([pos[0], pos[1]+out, pos[2]]) {
