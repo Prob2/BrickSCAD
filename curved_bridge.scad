@@ -115,7 +115,7 @@ module bridges(n=1) {
     }
 }
 
-bridges();
+bridges(2);
 
 module bridge_translate(pos, do_rotate=true, do_scale=true) {
     if (straight) {
