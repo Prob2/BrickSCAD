@@ -14,8 +14,9 @@ curve_radius = radius;
 
 
 arch_length = radius * angle * PI / 180.0;
-pillar_thickness = 18;
+pillar_thickness = 19.5;
 hole_radius = (arch_length - pillar_thickness) / 2;
+half_pillar_thickness = pillar_thickness / 2;
 
 top_thickness = 15;
 
@@ -37,6 +38,7 @@ brick_chamfer = 0.2;
 brick_depth = 0.6;
 
 odd_row_offset = brick_length / 2;
+pillar_offset = 2;
 
 $fn = 90;
 
@@ -60,18 +62,19 @@ module bridge_hole_lower() {
     bridge_poly(c);
 }
 
-module pillar_side_bricks(y) {
+module pillar_side_bricks(y, f=1) {
+        // TODO: Scale the brick length according to y so that the gaps are equal on the inside and outside of the arch
         for (i = [0:10]) {
-            bridge_translate([brick_length/2, y, i*5]) {
+            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_length/2 - brick_width), y, i*5 + 1.25 * (1-f)]) {
                 brick();
             }
-            bridge_translate([brick_length+brick_width/2, y, i*5]) {
+            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_width/2), y, i*5 + 1.25 * (1-f)]) {
                 brick(brick_width);
             }
-            bridge_translate([brick_length/4, y, i*5 + 2.5]) {
-                brick(brick_length/2);
+            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_length - brick_length/2), y, i*5 + 1.25 * (1+f)]) {
+                brick();
             }
-            bridge_translate([5*brick_length/4, y, i*5 + 2.5]) {
+            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_length/2), y, i*5 + 1.25 * (1+f)]) {
                 brick();
             }
         }
@@ -91,7 +94,14 @@ module bridge() {
     up(brick_height/2) {
         pillar_side_bricks(track_width/2-1);
         pillar_side_bricks(-track_width/2+1);
-    }  
+        
+        up(grade/100.0*arch_length) {
+            zrot(-angle) {
+                pillar_side_bricks(track_width/2-1, -1);
+                pillar_side_bricks(-track_width/2+1, -1);
+            }
+        }
+    }
     }
     
     // Top wall
