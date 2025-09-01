@@ -35,7 +35,7 @@ brick_height = 2.25; // [2:0.05:4]
 brick_randomness = 0.2;
 brick_gap = 0.8;
 brick_chamfer = 0.2;
-brick_depth = 0.6;
+brick_depth = 0.8;
 
 odd_row_offset = brick_length / 2;
 pillar_offset = 2;
@@ -63,8 +63,6 @@ module bridge_hole_lower() {
 }
 
 module pillar_side_bricks(y, f=1, side=1) {
-        // TODO: Scale the brick length according to y so that the gaps are equal on the inside and outside of the arch
-        
         odd_h = 1.25 * (1-f*side);
         even_h = 1.25 * (1+f*side);
         scale_f = 1 - y/radius;
@@ -85,6 +83,30 @@ module pillar_side_bricks(y, f=1, side=1) {
         }
 }
 
+
+module pillar_inside_bricks(x, f=1) {
+        l = track_width + 2 * brick_depth - brick_length - brick_width;
+        n = round(l / brick_length);
+        i_brick_length = l / n;
+        
+        start = -track_width/2 - brick_depth; 
+        
+        odd_h = 1.25 * (1-f);
+        even_h = 1.25 * (1+f);
+
+        
+        for (i = [0:10]) {
+            for (j = [0:n-1]) {
+                bridge_translate([x, start + brick_width + (j+0.5) * i_brick_length, i*5 + odd_h]) {
+                    zrot(90) brick(length=i_brick_length);
+                }
+                bridge_translate([x, start + brick_length + (j+0.5) * i_brick_length, i*5 + even_h]) {
+                    zrot(90) brick(length=i_brick_length);
+                }
+            }
+        }
+}
+
 module bridge() {
     // Main body
     difference() {
@@ -93,28 +115,38 @@ module bridge() {
         bridge_hole_lower();
     }
     
+    d = brick_width/2 - brick_depth;
+    t = track_width/2 - d;
     
     // Pillar side bricks
     color("red") {
     up(brick_height/2) {
-        pillar_side_bricks(track_width/2-1, 1, 1);
-        pillar_side_bricks(-track_width/2+1, 1, -1);
+        pillar_side_bricks(t, 1, 1);
+        pillar_side_bricks(-t, 1, -1);
         
         up(grade/100.0*arch_length) {
             zrot(-angle) {
-                pillar_side_bricks(track_width/2-1, -1, 1);
-                pillar_side_bricks(-track_width/2+1, -1, -1);
+                pillar_side_bricks(t, -1, 1);
+                pillar_side_bricks(-t, -1, -1);
             }
         }
     }
+    }
+    
+    // Pillar inside bricks
+    color("blue") {
+        up(brick_height/2) {
+            pillar_inside_bricks(half_pillar_thickness-d, 1);
+            pillar_inside_bricks(arch_length-half_pillar_thickness+d, -1);
+        }
     }
     
     // Top wall
     color("green")
     difference() {
         up(pillar_height) {
-            brick_wall(arch_length, bridge_height-pillar_height, out=track_width/2-1);
-            brick_wall(arch_length, bridge_height-pillar_height, out=-track_width/2+1);
+            brick_wall(arch_length, bridge_height-pillar_height, out=t);
+            brick_wall(arch_length, bridge_height-pillar_height, out=-t);
        }
        bridge_hole_top(r=hole_radius + brick_length);
    }
