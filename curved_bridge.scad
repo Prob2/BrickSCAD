@@ -406,7 +406,7 @@ module brick_arch(inner_radius, y, alternating = true, odd=false) {
         if (!alternating || (i % 2 == 0) == odd) {
           brick(radius = radius, length = brick_length, height = brick_height);
         } else {
-          back(brick_length / 2 - brick_width / 2) {
+          back((brick_length / 2 - brick_width / 2) * sign(y)) {
             left(ql)
               brick(radius = radius - ql, length = hl, height = brick_height * (radius - ql) / radius, width = brick_length);
             right(ql)
