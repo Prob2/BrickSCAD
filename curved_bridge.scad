@@ -18,13 +18,13 @@ pillar_thickness = 19.5;
 hole_radius = (arch_length - pillar_thickness) / 2;
 half_pillar_thickness = pillar_thickness / 2;
 
-top_thickness = 15;
+top_thickness = 10.5;
 
 pillar_height = bridge_height - top_thickness - hole_radius;
 
 
 /* [Track] */
-track_width = 26;
+track_width = 28;
 
 
 /* [Brick parameters] */
@@ -64,26 +64,53 @@ module bridge_hole_cut(r=hole_radius, y=0, t=1) {
 }
 
 module bridge_hole_lower() {
-    c = right(pillar_thickness/2, back(radius-track_width/2-1, cube([2*hole_radius, track_width+2, pillar_height])));
+    c = down(1, right(pillar_thickness/2, back(radius-track_width/2-1, cube([2*hole_radius, track_width+2, pillar_height+1]))));
     bridge_poly(c);
 }
 
+module track_cutout() {
+    width = 25.5;
+    floor_height = 1.3;
+    height = 7.2;
+    gauge = 9.8;
+    ballast_width = 18;
+    ballast_height = 5.1;
+    attachment_width = 1.25;
+    attachment_height = 1;
+    clearance = 0.15;
+
+    f = left(1, back(radius, cube([arch_length+2, width, floor_height], anchor=BOTTOM+LEFT)));
+    b = left(1, back(radius, cube([arch_length+2, ballast_width, ballast_height], anchor=BOTTOM+LEFT)));
+    
+    skew_s = (width - ballast_width) / ballast_height / 2;
+    skew_x = (width - ballast_width) / 2;
+    
+    up(bridge_height)
+    union() {
+        bridge_poly(down(floor_height+ballast_height-0.1, f));
+        bridge_poly(down(ballast_height-0.1, back(-skew_x, skew(syz=skew_s, b))));
+        bridge_poly(down(ballast_height-0.1, back(skew_x, skew(syz=-skew_s, b))));
+    }
+}
+
+pillar_row_count = round(pillar_height / brick_height / 2) - 1;
+
 module pillar_side_bricks(y, f=1, side=1) {
-        odd_h = 1.25 * (1-f*side);
-        even_h = 1.25 * (1+f*side);
+        odd_h = brick_height/2 * (1-f*side);
+        even_h = brick_height/2 * (1+f*side);
         scale_f = 1 - y/radius;
         
-        for (i = [0:10]) {
-            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_length/2 - brick_width), y, i*5 + odd_h]) {
+        for (i = [0:pillar_row_count]) {
+            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_length/2 - brick_width), y, i*brick_height*2 + odd_h]) {
                 brick(length=brick_length * scale_f);
             }
-            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_width/2), y - side * (brick_length/2 - brick_width/2), i*5 + odd_h]) {
+            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_width/2), y - side * (brick_length/2 - brick_width/2), i*brick_height*2 + odd_h]) {
                 zrot(90) brick(width=brick_width * scale_f);
             }
-            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_length - brick_length/2), y, i*5 + even_h]) {
+            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_length - brick_length/2), y, i*brick_height*2 + even_h]) {
                 brick(length=brick_length * scale_f);
             }
-            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_length/2), y, i*5 + even_h]) {
+            bridge_translate([f*(half_pillar_thickness + brick_gap - brick_length/2), y, i*brick_height*2 + even_h]) {
                 brick(length=brick_length * scale_f);
             }
         }
@@ -97,16 +124,16 @@ module pillar_inside_bricks(x, f=1) {
         
         start = -track_width/2 - brick_depth; 
         
-        odd_h = 1.25 * (1-f);
-        even_h = 1.25 * (1+f);
+        odd_h = brick_height/2 * (1-f);
+        even_h = brick_height/2 * (1+f);
 
         
-        for (i = [0:10]) {
+        for (i = [0:pillar_row_count]) {
             for (j = [0:n-1]) {
-                bridge_translate([x, start + brick_width + (j+0.5) * i_brick_length, i*5 + odd_h]) {
+                bridge_translate([x, start + brick_width + (j+0.5) * i_brick_length, i*brick_height*2 + odd_h]) {
                     zrot(90) brick(length=i_brick_length);
                 }
-                bridge_translate([x, start + brick_length + (j+0.5) * i_brick_length, i*5 + even_h]) {
+                bridge_translate([x, start + brick_length + (j+0.5) * i_brick_length, i*brick_height*2 + even_h]) {
                     zrot(90) brick(length=i_brick_length);
                 }
             }
@@ -126,7 +153,7 @@ module bridge() {
     
     // Pillar side bricks
     color("red") {
-    up(brick_height/2) {
+    up(brick_height/2+0.75) {
         pillar_side_bricks(t, 1, 1);
         pillar_side_bricks(-t, 1, -1);
         
@@ -141,13 +168,15 @@ module bridge() {
     
     // Pillar inside bricks
     color("blue") {
-        up(brick_height/2) {
+        up(brick_height/2+0.75) {
             pillar_inside_bricks(half_pillar_thickness-d, 1);
             pillar_inside_bricks(arch_length-half_pillar_thickness+d, -1);
         }
     }
     
     holes = [arch_length/2, 0, hole_radius];
+    
+    twcr = hole_radius + brick_length - brick_depth + brick_gap/2;
     
     // Top wall
     color("green")
@@ -156,31 +185,38 @@ module bridge() {
             brick_wall(arch_length, bridge_height-pillar_height, out=t, holes=holes);
             brick_wall(arch_length, bridge_height-pillar_height, out=-t, holes=holes);
        }
-       bridge_hole_top(r=hole_radius + brick_length);
-       bridge_hole_cut(r=hole_radius + brick_length, y=track_width/2);
-       bridge_hole_cut(r=hole_radius + brick_length, y=-track_width/2);
+       bridge_hole_top(r=twcr);
+       bridge_hole_cut(r=twcr, y=track_width/2);
+       bridge_hole_cut(r=twcr, y=-track_width/2);
    }
    
    // Side arch
    color("cyan") {
      up(pillar_height) {
-        brick_arch(inner_radius=hole_radius + brick_length/2 - brick_depth, y=t);
-        brick_arch(inner_radius=hole_radius + brick_length/2 - brick_depth, y=-t);
+        brick_arch(inner_radius=hole_radius + brick_length/2 - brick_depth, y=t, odd=false);
+        brick_arch(inner_radius=hole_radius + brick_length/2 - brick_depth, y=-t, odd=true);
      }
    }
 }
 
 module bridges(n=1) {
     union() {
-    for (i=[0:n-1]) {
-        up(i*grade/100.0*arch_length)
-            zrot(-i*angle)
-                bridge();
-    }
+        for (i=[0:n-1]) {
+            up(i*grade/100.0*arch_length)
+                zrot(-i*angle)
+                    difference() {
+                        bridge();
+                        track_cutout();
+                    }
+        }
     }
 }
 
-bridges(2);
+intersection() {
+    bridges(3);
+    zrot(90 - angle/2 - 2*angle)
+        pie_slice(r=2*radius, h=2*bridge_height, ang=2*angle);
+}
 
 module bridge_translate(pos, do_rotate=true, do_scale=true) {
     if (straight) {
@@ -375,26 +411,33 @@ function is_in_hole(pos, hole) =
     let (y = pos[2] - hole[1])
     sqrt(x*x + y*y) < hole[2];
           
-module brick_wall(length, height, out = 0, symm = false, holes=[], invert_odd=false, open=false, radius=0) {
+module brick_wall(length, height, out = 0, symm = false, holes=[], invert_odd=false, open=false) {
   points = (symm) ? wall_points_symm(length, height, invert_odd) : open ? wall_points_open(length, height, invert_odd) : wall_points_offset(length, height, invert_odd);
   for(p = points) {
     pos = [p[0], p[1], p[2]];
     if (!is_in_hole(pos, holes)) {
       bridge_translate([pos[0], pos[1]+out, pos[2]]) {
-        brick(length = p[3], width = p[4], height = p[5]);
+        brick(length = p[3] * (1 - out/radius), width = p[4], height = p[5]);
       }
     }
   }
 }
 
+function adjust_to_ab(n, a, b) = round((n - b) / a) * a + b;
+
 arch_rows_length = hole_radius * PI;
-arch_row_count = round(arch_rows_length / brick_height);
+arch_row_count = adjust_to_ab(arch_rows_length / brick_height, 2, 1);
 arch_row_angle = 180.0 / arch_row_count;
+
 
 module brick_arch(inner_radius, y, alternating = true, odd=false) {
 
   hl = brick_length / 2;
   ql = brick_length / 4;
+  
+    l = track_width + 2 * brick_depth - brick_length - brick_width;
+    n = round(l / brick_length);
+    i_brick_length = l / n;
   
   for (i = [0:arch_row_count]) {
     angle = arch_row_angle * i;
@@ -415,6 +458,15 @@ module brick_arch(inner_radius, y, alternating = true, odd=false) {
         }
       }
     }
+
+    if (alternating && (i % 2 == 1) == odd) {
+        for (j = [0:n-1]) {
+            bridge_translate([x, y - (brick_depth + brick_length + j*i_brick_length)*sign(y), z]) {
+            yrot(angle)
+                right(ql)
+                    brick(radius = radius + ql, length = hl, height = brick_height * (radius + ql) / radius, width = i_brick_length);
+            }
+        }
+    }
   }
 }
-
