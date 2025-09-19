@@ -54,7 +54,7 @@ portal_wall_right_angle = -15;
 straight = false;
 curve_radius = 150; // [150, 183, 216, 249, 282, 315, 348]
 curve_angle = 30; // [5, 15, 22.5, 30, 45, 60, 75, 90]
-grade_percent = 3.0; // [0.0:0.5:6]
+grade_percent = 3.0; // [-6.0:0.5:6]
 left = false;
 straight_track_length = 128;
 
@@ -184,6 +184,10 @@ module segment_sweep(profile, length) {
         left(curve_radius)
         up(curve_height*factor/2)
         spiral_sweep(profile, r=curve_radius, turns = turns * turn_sign * factor, h=curve_height * factor, $fn = 90);
+    } else if (curve_height < 0) {
+        left(curve_radius)
+        up(curve_height*factor/2)
+        spiral_sweep(profile, r=curve_radius, turns = -turns * turn_sign * factor, h=abs(curve_height * factor), $fn = 90);
     } else if (curve_radius != 0) {
         left(curve_radius)
         zrot(curve_angle * (left ? 0 : -1) * factor)

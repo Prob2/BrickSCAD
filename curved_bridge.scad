@@ -41,6 +41,7 @@ odd_row_offset = brick_length / 2;
 pillar_offset = 2;
 
 $fn = 90;
+show_bricks = true;
 
 function bridge_bend(c, bent = true) = 
     let (s = skew(c, szx=grade/100.0))
@@ -93,6 +94,9 @@ module track_cutout(bent=true) {
         bridge_poly(down(floor_height+ballast_height-0.1, f), bent);
         bridge_poly(down(ballast_height-0.1, back(-skew_x, skew(syz=skew_s, b))), bent);
         bridge_poly(down(ballast_height-0.1, back(skew_x, skew(syz=-skew_s, b))), bent);
+        
+        // Cutout for easier printing upside down
+        // bridge_poly(down(width/sqrt(2)*0.8, back(radius, zscale(0.7, xrot(45, left(1, cube([arch_length+2, width/sqrt(2), width/sqrt(2)])))))), bent);
     }
 }
 
@@ -160,6 +164,8 @@ module bridge(bent=true) {
     d = brick_width/2 - brick_depth;
     t = track_width/2 - d;
     
+    if (show_bricks) {
+    
     // Pillar side bricks
     color("red") {
     up(0) {
@@ -212,6 +218,7 @@ module bridge(bent=true) {
         brick_arch(inner_radius=hole_radius + brick_length/2 - brick_depth, y=-t, odd=true, bent=bent);
      }
    }
+   }
 }
 
 module bridges(n=1, s=1) {
@@ -235,13 +242,18 @@ module bridges(n=1, s=1) {
     }
 }
 
-intersection() {
+difference() {
     bridges(4, 2);
-    /*
-    zrot(90 - angle/2 - 2*angle)
+    
+    zrot(-2.5*angle)
         down(bridge_height)
-        pie_slice(r=2*radius, h=3*bridge_height, ang=2*angle);
-    */
+        pie_slice(r=2*radius, h=3*bridge_height, ang=angle);
+        
+    left(2*arch_length+80)
+    fwd(arch_length)
+    zrot(45)
+        down(bridge_height)
+        cube([2*radius, 2*radius, 3*bridge_height]);
 }
 
 module bridge_translate(pos, do_rotate=true, do_scale=true, bent=true) {
