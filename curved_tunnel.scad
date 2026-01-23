@@ -6,6 +6,7 @@ Include_floor = true;
 Include_portal = true;
 Include_portal_frame = true;
 Include_separate_frame = true;
+Include_full_frame = true;
 Include_bricks = true;
 Extra_tunnel_segments = 0;
 Include_cover = true;
@@ -539,7 +540,6 @@ union() {
         portal_skew()
         portal_frame(include_bottom=false);
     }
-
 }
 
 module wall(width, height) {
@@ -570,8 +570,15 @@ if (Include_separate_frame) {
     portal_frame(include_bottom=true);
 }
 
+if (Include_full_frame) {
+    right(2*portal_width + 40)
+    portal_skew()
+    hull()
+    portal_frame(include_bottom=true);
+}
+
 if (Include_cover) {
-    right(2*portal_width + 40) {
+    right(3*portal_width + 60) {
         profile = cover_profile();
         segment_sweep(profile, cover_length);
     }

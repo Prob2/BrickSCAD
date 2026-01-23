@@ -273,7 +273,7 @@ module bridge_translate(pos, do_rotate=true, do_scale=true, bent=true) {
         // Bricks on the inside have to be shorter than the bricks on the outside
         // so that the same number of bricks can fill the wall on both sides
         sf = do_scale ? point_radius/curve_radius : 1;
-        scale_factor = [1, sf, 1];
+        scale_factor = [sf, 1, 1];
                 
         translate(tunnel_pos) zrot(point_angle) yrot(do_rotate ? -turn_sign * grade_angle : 0) scale(scale_factor) children();
     }
@@ -455,7 +455,7 @@ module brick_wall(length, height, out = 0, symm = false, holes=[], invert_odd=fa
     pos = [p[0], p[1], p[2]];
     if (!is_in_hole(pos, holes)) {
       bridge_translate([pos[0], pos[1]+out, pos[2]], bent=bent) {
-        brick(length = p[3] * (1 - out/radius), width = p[4], height = p[5]);
+        brick(length = p[3], width = p[4], height = p[5]);
       }
     }
   }
