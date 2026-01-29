@@ -34,6 +34,7 @@ floor_side_support_height = 8;
 floor_ballast_height = 4;
 
 floor_off_center = 1;
+floor_clip_cutout = true;
 
 /* [Tunnel Portal] */
 portal_width_left = 10;
@@ -106,14 +107,10 @@ function tunnel_profile(step = 5, wh = side_wall_height) =
     let (tr = tunnel_radius + thickness)
     [
         [-tunnel_radius, 0],
-        [-tunnel_radius, wh],
         for (a = [0:step:180]) [-tunnel_radius * cos(a), wh + tunnel_radius * sin(a)],
-        [tunnel_radius, wh],
         [tunnel_radius, 0],
         [tr, 0],
-        [tr, wh],
         for (a = [180:-step:0]) [-tr * cos(a), wh + tr * sin(a)],
-        [-tr, side_wall_height],
         [-tr, 0],
     ];
     
@@ -121,9 +118,7 @@ function tunnel_envelope_profile(step = 5, wh = side_wall_height) =
     let (tr = tunnel_radius + thickness)
     [
         [tr, 0],
-        [tr, wh],
         for (a = [180:-step:0]) [-tr * cos(a), wh + tr * sin(a)],
-        [-tr, wh],
         [-tr, 0],
     ];
     
@@ -131,9 +126,7 @@ function tunnel_inner_envelope_profile(r, h, t, step = 5) =
     let (tr = tunnel_radius - clearance)
     [
         [tr, 0],
-        [tr, side_wall_height],
         for (a = [180:-step:0]) [-tr * cos(a), side_wall_height + tr * sin(a)],
-        [-tr, side_wall_height],
         [-tr, 0],
     ];
     
@@ -143,14 +136,10 @@ function cover_profile(step = 5) =
     let (wh = side_height)
     [
         [-ir, 0],
-        [-ir, wh],
         for (a = [0:step:180]) [-ir * cos(a), wh + ir * sin(a)],
-        [ir, wh],
         [ir, 0],
         [tr, 0],
-        [tr, wh],
         for (a = [180:-step:0]) [-tr * cos(a), wh + tr * sin(a)],
-        [-tr, side_wall_height],
         [-tr, 0],
     ];
 
@@ -366,11 +355,22 @@ module envelope() {
     */
 }
 
+module clip_cutout() {
+    cube([19, 21, 100], center=true);
+}
+
 if (Include_floor) {
     down(16) {
         profile = floor_profile();
         portal_angle_cut()
-        tunnel_sweep(profile);
+        difference() {
+            tunnel_sweep(profile);
+            if (floor_clip_cutout) {
+                tunnel_translate([-floor_off_center, 0, 0]) clip_cutout();
+                tunnel_translate([-floor_off_center, track_length, 0]) clip_cutout();
+                tunnel_translate([-floor_off_center, -track_length, 0]) clip_cutout();
+            }
+        }
     }
 }
 
@@ -454,8 +454,10 @@ module xz_translate(distance, left=true) {
 }
 
 module portal_skew() {
+if (portal_angle != 0) {
     back(portal_angle_offset)
     skew(ayx=portal_angle) children();
+   } else {children();}
 }
 
 module portal_angle_cut() {
